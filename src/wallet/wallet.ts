@@ -13,6 +13,7 @@ interface ChainData {
     wallet: DirectSecp256k1HdWallet;
     client: SigningCosmWasmClient;
     address: string;
+    queryAddress: string;
     feeCurrency: string;
 }
 
@@ -43,6 +44,7 @@ async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
         wallet: hdWallet,
         client: await SigningCosmWasmClient.connectWithSigner(rpc, hdWallet),
         address: (await hdWallet.getAccounts())[0]!.address,
+        queryAddress: (await hdWallet.getAccounts())[1]!.address,
         feeCurrency: feeCurrency
     } satisfies ChainData;
 }
@@ -57,9 +59,13 @@ async function tx<T>(func: () => Promise<T>) {
     }
 }
 
+async function query<T>(func: () => Promise<T>) {
+    return await func();
+}
+
 export async function queryContract(chain: Chain, contract: string, message: any) {
     const { client } = chains.get(Chain.Osmosis)!;
-    return await tx(async () => await client.queryContractSmart(contract, message));
+    return await query(async () => await client.queryContractSmart(contract, message));
 }
 
 export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[]) {
@@ -81,17 +87,17 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
 }
 
 async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction[]) {
-    const { client, address } = chains.get(chain)!;
+    const { client, queryAddress } = chains.get(chain)!;
 
     const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
         typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
         value: MsgExecuteContract.fromPartial({
-            sender: address,
+            sender: queryAddress,
             contract: i.contractAddress,
             msg: toUtf8(JSON.stringify(i.msg)),
             funds: [...(i.funds || [])],
         }),
     }));
 
-    return await tx(async () => await client.simulate(address, msgs, undefined));
+    return await query(async () => await client.simulate(queryAddress, msgs, undefined));
 }
