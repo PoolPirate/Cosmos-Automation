@@ -19,7 +19,7 @@ async function crankMarket(market: LevanaMarket) {
             contractAddress: market.contract,
             msg: {
                 crank: {
-                    execs: 10
+                    execs: 20
                 }
             }
         }

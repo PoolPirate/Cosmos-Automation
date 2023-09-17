@@ -48,7 +48,7 @@ async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
 }
 
 export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[]) {
-    const gas = Math.ceil(1.05 * await estimateExecuteGas(chain, instructions));
+    const gas = Math.ceil(1.15 * await estimateExecuteGas(chain, instructions));
 
     if (gas < 200000) {
         return;
