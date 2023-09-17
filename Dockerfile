@@ -9,4 +9,6 @@ COPY . .
 
 RUN npx tsc
 
-CMD [ "node" "src/main.js" ]
+WORKDIR /usr/src/app/src
+
+CMD [ "node", "main.js" ]
