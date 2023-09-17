@@ -56,7 +56,9 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
 
     const { client, address } = chains.get(Chain.Osmosis)!;
 
-    await txSemaphore.acquire().then(async (release) => {
+    const release = await txSemaphore.acquire();
+
+    try {
         await client.executeMultiple(address, instructions, {
             amount: [
                 {
@@ -66,8 +68,10 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
             ],
             gas: `${gas}`
         });
+    } finally {
+        await new Promise(resolve => setTimeout(resolve, 3000));
         release();
-    })
+    }
 }
 
 async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction[]) {

@@ -11,7 +11,7 @@ async function main() {
     await initializeWallet();
 
     setInterval(runLevanaCrank, 20000);
-    setInterval(runLevanaClaim, 600000);
+    setInterval(runLevanaClaim, 14400000);
 
     await sleepInfinite();
 }
