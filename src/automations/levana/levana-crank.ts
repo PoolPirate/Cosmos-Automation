@@ -8,21 +8,19 @@ interface LevanaStatus {
 }
 
 export async function runLevanaCrank() {
-    const marketsToCrank: LevanaMarket[] = [];
-
-    for (let i = 0; i < Config.levana.markets.length; i++) {
-        const market = Config.levana.markets[i]!;
+    const marketsToCrank = (await Promise.all(Config.levana.markets.map(async market => {
         try {
             const status = await queryContract(Chain.Osmosis, market.contract, {
                 status: {}
             }) as LevanaStatus;
 
-            if (status.next_crank != null) {
-                marketsToCrank.push(market);
-            }
+            return status.next_crank != null
+                ? market
+                : null;
         } catch (error) {
+            return null;
         }
-    }
+    }))).filter(x => x != null).map<LevanaMarket>(x => x!);
 
     await crankMarkets(marketsToCrank);
 }
