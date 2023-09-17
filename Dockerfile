@@ -7,4 +7,6 @@ RUN npm install
 
 COPY . .
 
-CMD [ "npm run run" ]
+RUN npx tsc
+
+CMD [ "node src/main.js" ]
