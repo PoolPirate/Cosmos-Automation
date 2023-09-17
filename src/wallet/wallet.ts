@@ -47,18 +47,27 @@ async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
     } satisfies ChainData;
 }
 
-export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[]) {
-    const gas = Math.ceil(1.15 * await estimateExecuteGas(chain, instructions));
-
-    if (gas < 200000) {
-        return;
-    }
-
-    const { client, address } = chains.get(Chain.Osmosis)!;
-
+async function tx<T>(func: () => Promise<T>) {
     const release = await txSemaphore.acquire();
 
     try {
+        return await func();
+    } finally {
+        release();
+    }
+}
+
+export async function queryContract(chain: Chain, contract: string, message: any) {
+    const { client } = chains.get(Chain.Osmosis)!;
+    return await tx(async () => await client.queryContractSmart(contract, message));
+}
+
+export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[]) {
+    const gas = Math.ceil(1.15 * await estimateExecuteGas(chain, instructions));
+
+    const { client, address } = chains.get(Chain.Osmosis)!;
+
+    await tx(async () => {
         await client.executeMultiple(address, instructions, {
             amount: [
                 {
@@ -68,10 +77,7 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
             ],
             gas: `${gas}`
         });
-    } finally {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        release();
-    }
+    });
 }
 
 async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction[]) {
@@ -87,5 +93,5 @@ async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction
         }),
     }));
 
-    return await client.simulate(address, msgs, undefined);
+    return await tx(async () => await client.simulate(address, msgs, undefined));
 }
