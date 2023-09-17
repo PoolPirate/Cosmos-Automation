@@ -13,6 +13,9 @@ async function main() {
     setInterval(runLevanaCrank, 15000);
     setInterval(runLevanaClaim, 14400000);
 
+    await runLevanaClaim();
+    await runLevanaCrank();
+
     await sleepInfinite();
 }
 
