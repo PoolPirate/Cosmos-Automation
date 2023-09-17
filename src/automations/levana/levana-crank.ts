@@ -30,16 +30,24 @@ export async function runLevanaCrank() {
 }
 
 async function crankMarkets(markets: LevanaMarket[]) {
-    await executeMultiple(Chain.Osmosis,
-        markets.map<ExecuteInstruction>(market => {
-            return {
-                contractAddress: market.contract,
-                msg: {
-                    crank: {
-                        execs: 10
+    try {
+        await executeMultiple(Chain.Osmosis,
+            markets.map<ExecuteInstruction>(market => {
+                return {
+                    contractAddress: market.contract,
+                    msg: {
+                        crank: {
+                            execs: 10
+                        }
                     }
                 }
+            })
+        );
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("Code: 11;")) { //Out of gas
+                await crankMarkets(markets);
             }
-        })
-    );
+        }
+    }
 }
