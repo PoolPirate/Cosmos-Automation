@@ -13,6 +13,7 @@ interface ChainData {
     wallet: DirectSecp256k1HdWallet;
     client: SigningCosmWasmClient;
     address: string;
+    queryClient: SigningCosmWasmClient;
     queryAddress: string;
     feeCurrency: string;
 }
@@ -39,12 +40,16 @@ async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
     const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(Config.mnemonics, {
         prefix: prefix
     })
+    const queryHdWallet = await DirectSecp256k1HdWallet.fromMnemonic(Config.queryMnemonics, {
+        prefix: prefix
+    });
 
     return {
         wallet: hdWallet,
         client: await SigningCosmWasmClient.connectWithSigner(rpc, hdWallet),
         address: (await hdWallet.getAccounts())[0]!.address,
-        queryAddress: (await hdWallet.getAccounts())[1]!.address,
+        queryClient: await SigningCosmWasmClient.connectWithSigner(rpc, queryHdWallet),
+        queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
         feeCurrency: feeCurrency
     } satisfies ChainData;
 }
@@ -64,8 +69,8 @@ async function query<T>(func: () => Promise<T>) {
 }
 
 export async function queryContract(chain: Chain, contract: string, message: any) {
-    const { client } = chains.get(Chain.Osmosis)!;
-    return await query(async () => await client.queryContractSmart(contract, message));
+    const { queryClient } = chains.get(Chain.Osmosis)!;
+    return await query(async () => await queryClient.queryContractSmart(contract, message));
 }
 
 export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[]) {
@@ -87,7 +92,7 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
 }
 
 async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction[]) {
-    const { client, queryAddress } = chains.get(chain)!;
+    const { queryClient, queryAddress } = chains.get(chain)!;
 
     const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
         typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
@@ -99,5 +104,5 @@ async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction
         }),
     }));
 
-    return await query(async () => await client.simulate(queryAddress, msgs, undefined));
+    return await query(async () => await queryClient.simulate(queryAddress, msgs, undefined));
 }

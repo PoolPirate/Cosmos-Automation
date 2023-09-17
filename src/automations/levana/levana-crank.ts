@@ -22,6 +22,10 @@ export async function runLevanaCrank() {
         }
     }))).filter(x => x != null).map<LevanaMarket>(x => x!);
 
+    if (marketsToCrank.length == 0) {
+        return;
+    }
+
     await crankMarkets(marketsToCrank);
 }
 
