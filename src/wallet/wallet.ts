@@ -36,6 +36,10 @@ export async function initializeWallet() {
     console.log("Wallet setup complete");
 }
 
+export function getAddress(chain: Chain) {
+    return chains.get(chain)!.address;
+}
+
 async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
     const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(Config.mnemonics, {
         prefix: prefix
