@@ -41,7 +41,7 @@ async function claimMarkets(markets: LevanaMarket[]) {
                         "claim_yield": {}
                     }
                 }
-            }));
+            }), true);
     } catch (error) {
         console.error("Claiming failed!\n" + error);
     }

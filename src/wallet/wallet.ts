@@ -77,8 +77,8 @@ export async function queryContract(chain: Chain, contract: string, message: any
     return await query(async () => await queryClient.queryContractSmart(contract, message));
 }
 
-export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[]) {
-    const gas = Math.ceil(1.15 * await estimateExecuteGas(chain, instructions));
+export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[], simulateAsPrimary: boolean = false) {
+    const gas = Math.ceil(1.15 * await estimateExecuteGas(chain, instructions, simulateAsPrimary));
 
     const { client, address } = chains.get(Chain.Osmosis)!;
 
@@ -95,18 +95,34 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
     });
 }
 
-async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction[]) {
-    const { queryClient, queryAddress } = chains.get(chain)!;
+async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction[], usePrimary: boolean) {
+    if (!usePrimary) {
+        const { queryClient, queryAddress } = chains.get(chain)!;
 
-    const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
-        typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
-        value: MsgExecuteContract.fromPartial({
-            sender: queryAddress,
-            contract: i.contractAddress,
-            msg: toUtf8(JSON.stringify(i.msg)),
-            funds: [...(i.funds || [])],
-        }),
-    }));
+        const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
+            typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+            value: MsgExecuteContract.fromPartial({
+                sender: queryAddress,
+                contract: i.contractAddress,
+                msg: toUtf8(JSON.stringify(i.msg)),
+                funds: [...(i.funds || [])],
+            }),
+        }));
 
-    return await query(async () => await queryClient.simulate(queryAddress, msgs, undefined));
+        return await query(async () => await queryClient.simulate(queryAddress, msgs, undefined));
+    } else {
+        const { client, address } = chains.get(chain)!;
+
+        const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
+            typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+            value: MsgExecuteContract.fromPartial({
+                sender: address,
+                contract: i.contractAddress,
+                msg: toUtf8(JSON.stringify(i.msg)),
+                funds: [...(i.funds || [])],
+            }),
+        }));
+
+        return await tx(async () => await client.simulate(address, msgs, undefined));
+    }
 }
