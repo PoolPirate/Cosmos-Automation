@@ -1,22 +1,22 @@
 {
-  "author": "",
-  "dependencies": {
-    "@cosmjs/cosmwasm-stargate": "^0.31.1",
-    "@cosmjs/proto-signing": "^0.31.1",
-    "@cosmjs/stargate": "^0.31.1",
-    "semaphore-promise": "^1.4.2",
-    "ts-node": "^10.9.1"
-  },
-  "description": "",
-  "devDependencies": {
-    "prettier": "^3.0.3",
-    "typescript": "^5.2.2"
-  },
-  "license": "ISC",
-  "main": "index.js",
-  "name": "cosmos-automation",
-  "scripts": {
-    "run": "npx tsc && node src\\main.js"
-  },
-  "version": "1.0.0"
+    "author": "",
+    "dependencies": {
+        "@cosmjs/cosmwasm-stargate": "^0.31.1",
+        "@cosmjs/proto-signing": "^0.31.1",
+        "@cosmjs/stargate": "^0.31.1",
+        "semaphore-promise": "^1.4.2",
+        "ts-node": "^10.9.1"
+    },
+    "description": "",
+    "devDependencies": {
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2"
+    },
+    "license": "ISC",
+    "main": "index.js",
+    "name": "cosmos-automation",
+    "scripts": {
+        "run": "npx tsc && node src\\main.js"
+    },
+    "version": "1.0.0"
 }

@@ -1,14 +1,18 @@
-import { DirectSecp256k1HdWallet, coin } from "@cosmjs/proto-signing";
-import Config from "../../config.json"
-import { ExecuteInstruction, MsgExecuteContractEncodeObject, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { MsgExecuteContract } from "cosmjs-types/cosmwasm/wasm/v1/tx";
-import { toUtf8 } from "@cosmjs/encoding";
-import { ReconnectingSocket } from "@cosmjs/socket"
-import Semaphore from "semaphore-promise";
-import { handleNewBlock } from "../main";
+import { DirectSecp256k1HdWallet, coin } from '@cosmjs/proto-signing';
+import Config from '../../config.json';
+import {
+    ExecuteInstruction,
+    MsgExecuteContractEncodeObject,
+    SigningCosmWasmClient,
+} from '@cosmjs/cosmwasm-stargate';
+import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
+import { toUtf8 } from '@cosmjs/encoding';
+import { ReconnectingSocket } from '@cosmjs/socket';
+import Semaphore from 'semaphore-promise';
+import { handleNewBlock } from '../main';
 
 export enum Chain {
-    Osmosis = "osmo"
+    Osmosis = 'osmo',
 }
 
 interface ChainData {
@@ -26,17 +30,22 @@ var chains: Map<Chain, ChainData> = null!;
 const txSemaphore = new Semaphore(1);
 
 export async function initializeWallet() {
-    console.log("Initializing wallet");
-    chains = new Map<Chain, ChainData>;
+    console.log('Initializing wallet');
+    chains = new Map<Chain, ChainData>();
 
     for (let i = 0; i < Config.chains.length; i++) {
         const chain = Config.chains[i]!;
-        const chainData = await makeChainData(chain.prefix, chain.queryRpc, chain.txRpc, chain.feeCurrency);
+        const chainData = await makeChainData(
+            chain.prefix,
+            chain.queryRpc,
+            chain.txRpc,
+            chain.feeCurrency,
+        );
         chains.set(chain.prefix as Chain, chainData);
-        console.log(`${chain.prefix} - ${chainData.txAddress}`)
+        console.log(`${chain.prefix} - ${chainData.txAddress}`);
     }
 
-    console.log("Wallet setup complete");
+    console.log('Wallet setup complete');
 }
 
 export function getAddress(chain: Chain) {
@@ -45,7 +54,7 @@ export function getAddress(chain: Chain) {
 
 export async function refreshPeakHeights() {
     const chains = Object.values(Chain) as Chain[];
-    chains.forEach(chain => refreshPeakHeight(chain, 1));
+    chains.forEach((chain) => refreshPeakHeight(chain, 1));
 }
 
 async function refreshPeakHeight(chain: Chain, callsSinceUpdate: number) {
@@ -63,30 +72,50 @@ async function refreshPeakHeight(chain: Chain, callsSinceUpdate: number) {
             return;
         }
 
-        setTimeout(() => refreshPeakHeight(chain, callsSinceUpdate + 1), Math.max(333, 750 / callsSinceUpdate));
+        setTimeout(
+            () => refreshPeakHeight(chain, callsSinceUpdate + 1),
+            Math.max(333, 750 / callsSinceUpdate),
+        );
     } catch (error) {
         setTimeout(() => refreshPeakHeight(chain, callsSinceUpdate), 1000);
     }
 }
 
-async function makeChainData(prefix: string, queryRpc: string, txRpc: string, feeCurrency: string) {
-    const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(Config.mnemonics, {
-        prefix: prefix
-    })
-    const queryHdWallet = await DirectSecp256k1HdWallet.fromMnemonic(Config.queryMnemonics, {
-        prefix: prefix
-    });
+async function makeChainData(
+    prefix: string,
+    queryRpc: string,
+    txRpc: string,
+    feeCurrency: string,
+) {
+    const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(
+        Config.mnemonics,
+        {
+            prefix: prefix,
+        },
+    );
+    const queryHdWallet = await DirectSecp256k1HdWallet.fromMnemonic(
+        Config.queryMnemonics,
+        {
+            prefix: prefix,
+        },
+    );
 
-    const queryClient = await SigningCosmWasmClient.connectWithSigner(queryRpc, queryHdWallet);
+    const queryClient = await SigningCosmWasmClient.connectWithSigner(
+        queryRpc,
+        queryHdWallet,
+    );
 
     return {
         wallet: hdWallet,
-        txClient: await SigningCosmWasmClient.connectWithSigner(txRpc, hdWallet),
+        txClient: await SigningCosmWasmClient.connectWithSigner(
+            txRpc,
+            hdWallet,
+        ),
         txAddress: (await hdWallet.getAccounts())[0]!.address,
         queryClient: queryClient,
         queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
         feeCurrency: feeCurrency,
-        peakHeight: (await queryClient.getBlock()).header.height
+        peakHeight: (await queryClient.getBlock()).header.height,
     } satisfies ChainData;
 }
 
@@ -104,13 +133,28 @@ async function query<T>(func: () => Promise<T>) {
     return await func();
 }
 
-export async function queryContract(chain: Chain, contract: string, message: any) {
+export async function queryContract(
+    chain: Chain,
+    contract: string,
+    message: any,
+) {
     const { queryClient } = chains.get(Chain.Osmosis)!;
-    return await query(async () => await queryClient.queryContractSmart(contract, message));
+    return await query(
+        async () => await queryClient.queryContractSmart(contract, message),
+    );
 }
 
-export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[], simulateAsPrimary: boolean = false, minimumGas: number = 0) {
-    const gas = await estimateExecuteGas(chain, instructions, simulateAsPrimary);
+export async function executeMultiple(
+    chain: Chain,
+    instructions: ExecuteInstruction[],
+    simulateAsPrimary: boolean = false,
+    minimumGas: number = 0,
+) {
+    const gas = await estimateExecuteGas(
+        chain,
+        instructions,
+        simulateAsPrimary,
+    );
     const bufferedGas = Math.ceil(1.03 * gas);
 
     if (gas < minimumGas) {
@@ -123,43 +167,56 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
         await txClient.executeMultiple(txAddress, instructions, {
             amount: [
                 {
-                    denom: "uosmo",
-                    amount: `${Math.ceil(0.0025 * bufferedGas)}`
-                }
+                    denom: 'uosmo',
+                    amount: `${Math.ceil(0.0025 * bufferedGas)}`,
+                },
             ],
-            gas: `${bufferedGas}`
+            gas: `${bufferedGas}`,
         });
     });
 }
 
-async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction[], usePrimary: boolean) {
+async function estimateExecuteGas(
+    chain: Chain,
+    instructions: ExecuteInstruction[],
+    usePrimary: boolean,
+) {
     if (!usePrimary) {
         const { queryClient, queryAddress } = chains.get(chain)!;
 
-        const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
-            typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
-            value: MsgExecuteContract.fromPartial({
-                sender: queryAddress,
-                contract: i.contractAddress,
-                msg: toUtf8(JSON.stringify(i.msg)),
-                funds: [...(i.funds || [])],
+        const msgs: MsgExecuteContractEncodeObject[] = instructions.map(
+            (i) => ({
+                typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract',
+                value: MsgExecuteContract.fromPartial({
+                    sender: queryAddress,
+                    contract: i.contractAddress,
+                    msg: toUtf8(JSON.stringify(i.msg)),
+                    funds: [...(i.funds || [])],
+                }),
             }),
-        }));
+        );
 
-        return await query(async () => await queryClient.simulate(queryAddress, msgs, undefined));
+        return await query(
+            async () =>
+                await queryClient.simulate(queryAddress, msgs, undefined),
+        );
     } else {
         const { txClient, txAddress } = chains.get(chain)!;
 
-        const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
-            typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
-            value: MsgExecuteContract.fromPartial({
-                sender: txAddress,
-                contract: i.contractAddress,
-                msg: toUtf8(JSON.stringify(i.msg)),
-                funds: [...(i.funds || [])],
+        const msgs: MsgExecuteContractEncodeObject[] = instructions.map(
+            (i) => ({
+                typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract',
+                value: MsgExecuteContract.fromPartial({
+                    sender: txAddress,
+                    contract: i.contractAddress,
+                    msg: toUtf8(JSON.stringify(i.msg)),
+                    funds: [...(i.funds || [])],
+                }),
             }),
-        }));
+        );
 
-        return await tx(async () => await txClient.simulate(txAddress, msgs, undefined));
+        return await tx(
+            async () => await txClient.simulate(txAddress, msgs, undefined),
+        );
     }
 }
