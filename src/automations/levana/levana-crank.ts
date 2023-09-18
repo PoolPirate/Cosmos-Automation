@@ -62,5 +62,6 @@ async function crankMarkets(chain: Chain, markets: LevanaMarket[]) {
         );
     } catch (error) {
         console.log(`Crank TX Failed: ${error}`);
+        previousCrankTasks.clear();
     }
 }
