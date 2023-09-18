@@ -110,7 +110,8 @@ export async function queryContract(chain: Chain, contract: string, message: any
 }
 
 export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[], simulateAsPrimary: boolean = false, minimumGas: number = 0) {
-    const gas = Math.ceil(1.2 * await estimateExecuteGas(chain, instructions, simulateAsPrimary));
+    const gas = Math.ceil(await estimateExecuteGas(chain, instructions, simulateAsPrimary));
+    const bufferedGas = 1.05 * gas;
 
     if (gas < minimumGas) {
         return;
@@ -123,10 +124,10 @@ export async function executeMultiple(chain: Chain, instructions: ExecuteInstruc
             amount: [
                 {
                     denom: "uosmo",
-                    amount: `${Math.ceil(0.0025 * gas)}`
+                    amount: `${Math.ceil(0.0025 * bufferedGas)}`
                 }
             ],
-            gas: `${gas}`
+            gas: `${bufferedGas}`
         });
     });
 }
