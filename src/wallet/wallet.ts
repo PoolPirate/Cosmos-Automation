@@ -149,7 +149,7 @@ export async function executeMultiple(
     instructions: ExecuteInstruction[],
     simulateAsPrimary: boolean = false,
     minimumGas: number = 0,
-    gasMultiplicator: number = 1.03,
+    gasMultiplicator: number = 1.05,
 ) {
     const gas = await estimateExecuteGas(
         chain,
