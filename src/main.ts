@@ -20,9 +20,10 @@ async function main() {
 }
 
 export async function handleNewBlock(chain: Chain, height: number, timestamp: Date) {
-    console.log(`${chain} - ${height} (${new Date().getTime() - timestamp.getTime()}ms late)`)
+    const blockDelay = new Date().getTime() - timestamp.getTime();
+    console.log(`${chain} - ${height} (${blockDelay}ms late)`)
 
-    await runLevanaCrank(chain);
+    await runLevanaCrank(chain, blockDelay);
     lastCrankRun = new Date();
 }
 

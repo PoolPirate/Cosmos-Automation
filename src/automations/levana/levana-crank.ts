@@ -9,7 +9,7 @@ interface LevanaStatus {
 
 var previousCrankTasks: Map<string, string> = new Map<string, string>();
 
-export async function runLevanaCrank(chain: Chain) {
+export async function runLevanaCrank(chain: Chain, blockDelay: number) {
     const started = new Date().getTime();
 
     const marketsToCrank = (await Promise.all(Config.levana.markets.map(async market => {
@@ -36,6 +36,11 @@ export async function runLevanaCrank(chain: Chain) {
     }
 
     const elapsed = new Date().getTime() - started;
+
+    if (blockDelay + elapsed > 18000) {
+        console.log(`CRANK aborted - Delay: ${blockDelay} + ${elapsed}`);
+        return;
+    }
 
     await crankMarkets(chain, marketsToCrank);
     console.log(`CRANKED - Filter: ${elapsed}ms`);
