@@ -8,7 +8,9 @@ lib-cov
 *.gz
 *.swp
 
-*.js
+src/**/*.js
+
+build
 
 pids
 logs
