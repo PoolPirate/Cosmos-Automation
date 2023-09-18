@@ -148,7 +148,7 @@ async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction
 
         return await query(async () => await queryClient.simulate(queryAddress, msgs, undefined));
     } else {
-        const { queryClient, txAddress } = chains.get(chain)!;
+        const { txClient, txAddress } = chains.get(chain)!;
 
         const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
             typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
@@ -160,6 +160,6 @@ async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction
             }),
         }));
 
-        return await query(async () => await queryClient.simulate(txAddress, msgs, undefined));
+        return await tx(async () => await txClient.simulate(txAddress, msgs, undefined));
     }
 }
