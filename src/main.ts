@@ -7,22 +7,23 @@ main()
     .then(() => { })
     .catch((e) => console.error("APP CRASH! " + e));
 
+var lastCrankRun: Date;
+
 async function main() {
     await initializeWallet();
 
     setTimeout(refreshPeakHeights, 1000); //Self refreshing
 
-    setInterval(runLevanaCrank, 10000);
     setInterval(runLevanaClaim, 14400000);
 
     await sleepInfinite();
 }
 
 export async function handleNewBlock(chain: Chain, height: number) {
-    const start = new Date().getTime();
     await runLevanaCrank(chain);
-    const elapsed = new Date().getTime() - start;
+    lastCrankRun = new Date();
 }
+
 
 async function sleepInfinite() {
     await new Promise(() => { });

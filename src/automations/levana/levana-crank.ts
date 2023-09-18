@@ -26,7 +26,7 @@ export async function runLevanaCrank(chain: Chain) {
         return;
     }
 
-    //await crankMarkets(marketsToCrank);
+    await crankMarkets(chain, marketsToCrank);
 }
 
 async function crankMarkets(chain: Chain, markets: LevanaMarket[]) {
