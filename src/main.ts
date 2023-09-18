@@ -16,6 +16,8 @@ async function main() {
 
     setInterval(runLevanaClaim, 14400000);
 
+    await runLevanaClaim(Chain.Osmosis);
+
     await sleepInfinite();
 }
 
