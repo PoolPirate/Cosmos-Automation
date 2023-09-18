@@ -109,8 +109,12 @@ export async function queryContract(chain: Chain, contract: string, message: any
     return await query(async () => await queryClient.queryContractSmart(contract, message));
 }
 
-export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[], simulateAsPrimary: boolean = false) {
+export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[], simulateAsPrimary: boolean = false, minimumGas: number = 0) {
     const gas = Math.ceil(1.2 * await estimateExecuteGas(chain, instructions, simulateAsPrimary));
+
+    if (gas < minimumGas) {
+        return;
+    }
 
     const { txClient, txAddress } = chains.get(Chain.Osmosis)!;
 
