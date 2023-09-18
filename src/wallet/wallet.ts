@@ -110,8 +110,8 @@ export async function queryContract(chain: Chain, contract: string, message: any
 }
 
 export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[], simulateAsPrimary: boolean = false, minimumGas: number = 0) {
-    const gas = Math.ceil(await estimateExecuteGas(chain, instructions, simulateAsPrimary));
-    const bufferedGas = 1.05 * gas;
+    const gas = await estimateExecuteGas(chain, instructions, simulateAsPrimary);
+    const bufferedGas = Math.ceil(1.05 * gas);
 
     if (gas < minimumGas) {
         return;
