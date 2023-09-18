@@ -149,13 +149,14 @@ export async function executeMultiple(
     instructions: ExecuteInstruction[],
     simulateAsPrimary: boolean = false,
     minimumGas: number = 0,
+    gasMultiplicator: number = 1.03,
 ) {
     const gas = await estimateExecuteGas(
         chain,
         instructions,
         simulateAsPrimary,
     );
-    const bufferedGas = Math.ceil(1.03 * gas);
+    const bufferedGas = Math.ceil(gasMultiplicator * gas);
 
     if (gas < minimumGas) {
         return;

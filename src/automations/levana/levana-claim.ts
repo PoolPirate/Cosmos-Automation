@@ -59,6 +59,8 @@ async function claimMarkets(chain: Chain, markets: LevanaMarket[]) {
                 };
             }),
             true,
+            undefined,
+            1.1,
         );
     } catch (error) {
         console.error('Claiming failed!\n' + error);
