@@ -13,8 +13,8 @@ export enum Chain {
 
 interface ChainData {
     wallet: DirectSecp256k1HdWallet;
-    client: SigningCosmWasmClient;
-    address: string;
+    txClient: SigningCosmWasmClient;
+    txAddress: string;
     queryClient: SigningCosmWasmClient;
     queryAddress: string;
     feeCurrency: string;
@@ -31,16 +31,16 @@ export async function initializeWallet() {
 
     for (let i = 0; i < Config.chains.length; i++) {
         const chain = Config.chains[i]!;
-        const chainData = await makeChainData(chain.prefix, chain.rpc, chain.feeCurrency);
+        const chainData = await makeChainData(chain.prefix, chain.queryRpc, chain.txRpc, chain.feeCurrency);
         chains.set(chain.prefix as Chain, chainData);
-        console.log(`${chain.prefix} - ${chainData.address}`)
+        console.log(`${chain.prefix} - ${chainData.txAddress}`)
     }
 
     console.log("Wallet setup complete");
 }
 
 export function getAddress(chain: Chain) {
-    return chains.get(chain)!.address;
+    return chains.get(chain)!.txAddress;
 }
 
 export async function refreshPeakHeights() {
@@ -53,22 +53,23 @@ async function refreshPeakHeight(chain: Chain, callsSinceUpdate: number) {
     const { queryClient, peakHeight } = chainData;
 
     try {
-        const height = (await queryClient.getBlock()).header.height;
+        const block = await queryClient.getBlock();
+        const height = block.header.height;
 
         if (height > peakHeight) {
             chainData.peakHeight = height;
-            setTimeout(() => refreshPeakHeight(chain, 1), 4000);
-            handleNewBlock(chain, height);
+            setTimeout(() => refreshPeakHeight(chain, 1), 4400);
+            handleNewBlock(chain, height, new Date(block.header.time));
             return;
         }
 
-        setTimeout(() => refreshPeakHeight(chain, callsSinceUpdate + 1), Math.max(333, 800 / callsSinceUpdate));
+        setTimeout(() => refreshPeakHeight(chain, callsSinceUpdate + 1), Math.max(333, 750 / callsSinceUpdate));
     } catch (error) {
         setTimeout(() => refreshPeakHeight(chain, callsSinceUpdate), 1000);
     }
 }
 
-async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
+async function makeChainData(prefix: string, queryRpc: string, txRpc: string, feeCurrency: string) {
     const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(Config.mnemonics, {
         prefix: prefix
     })
@@ -76,12 +77,12 @@ async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
         prefix: prefix
     });
 
-    const queryClient = await SigningCosmWasmClient.connectWithSigner(rpc, queryHdWallet);
+    const queryClient = await SigningCosmWasmClient.connectWithSigner(queryRpc, queryHdWallet);
 
     return {
         wallet: hdWallet,
-        client: await SigningCosmWasmClient.connectWithSigner(rpc, hdWallet),
-        address: (await hdWallet.getAccounts())[0]!.address,
+        txClient: await SigningCosmWasmClient.connectWithSigner(txRpc, hdWallet),
+        txAddress: (await hdWallet.getAccounts())[0]!.address,
         queryClient: queryClient,
         queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
         feeCurrency: feeCurrency,
@@ -109,12 +110,12 @@ export async function queryContract(chain: Chain, contract: string, message: any
 }
 
 export async function executeMultiple(chain: Chain, instructions: ExecuteInstruction[], simulateAsPrimary: boolean = false) {
-    const gas = Math.ceil(1.15 * await estimateExecuteGas(chain, instructions, simulateAsPrimary));
+    const gas = Math.ceil(1.2 * await estimateExecuteGas(chain, instructions, simulateAsPrimary));
 
-    const { client, address } = chains.get(Chain.Osmosis)!;
+    const { txClient, txAddress } = chains.get(Chain.Osmosis)!;
 
     await tx(async () => {
-        await client.executeMultiple(address, instructions, {
+        await txClient.executeMultiple(txAddress, instructions, {
             amount: [
                 {
                     denom: "uosmo",
@@ -142,18 +143,18 @@ async function estimateExecuteGas(chain: Chain, instructions: ExecuteInstruction
 
         return await query(async () => await queryClient.simulate(queryAddress, msgs, undefined));
     } else {
-        const { client, address } = chains.get(chain)!;
+        const { queryClient, txAddress } = chains.get(chain)!;
 
         const msgs: MsgExecuteContractEncodeObject[] = instructions.map((i) => ({
             typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
             value: MsgExecuteContract.fromPartial({
-                sender: address,
+                sender: txAddress,
                 contract: i.contractAddress,
                 msg: toUtf8(JSON.stringify(i.msg)),
                 funds: [...(i.funds || [])],
             }),
         }));
 
-        return await tx(async () => await client.simulate(address, msgs, undefined));
+        return await query(async () => await queryClient.simulate(txAddress, msgs, undefined));
     }
 }

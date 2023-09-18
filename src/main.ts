@@ -19,7 +19,9 @@ async function main() {
     await sleepInfinite();
 }
 
-export async function handleNewBlock(chain: Chain, height: number) {
+export async function handleNewBlock(chain: Chain, height: number, timestamp: Date) {
+    console.log(`${chain} - ${height} (${new Date().getTime() - timestamp.getTime()}ms late)`)
+
     await runLevanaCrank(chain);
     lastCrankRun = new Date();
 }

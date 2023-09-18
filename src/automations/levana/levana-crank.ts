@@ -7,12 +7,21 @@ interface LevanaStatus {
     next_crank: null | object;
 }
 
+var previousCrankTasks: Map<string, string> = new Map<string, string>();
+
 export async function runLevanaCrank(chain: Chain) {
+    const started = new Date().getTime();
+
     const marketsToCrank = (await Promise.all(Config.levana.markets.map(async market => {
         try {
             const status = await queryContract(chain, market.contract, {
                 status: {}
             }) as LevanaStatus;
+
+            if (previousCrankTasks.get(market.contract) == JSON.stringify(status.next_crank)) {
+                return null;
+            }
+            previousCrankTasks.set(market.contract, JSON.stringify(status.next_crank));
 
             return status.next_crank != null
                 ? market
@@ -26,7 +35,10 @@ export async function runLevanaCrank(chain: Chain) {
         return;
     }
 
+    const elapsed = new Date().getTime() - started;
+
     await crankMarkets(chain, marketsToCrank);
+    console.log(`CRANKED - Filter: ${elapsed}ms`);
 }
 
 async function crankMarkets(chain: Chain, markets: LevanaMarket[]) {
@@ -44,10 +56,6 @@ async function crankMarkets(chain: Chain, markets: LevanaMarket[]) {
             })
         );
     } catch (error) {
-        if (error instanceof Error) {
-            if (error.message.includes("Code: 11;")) { //Out of gas
-                await crankMarkets(chain, markets);
-            }
-        }
+        console.log(`Crank TX Failed: ${error}`);
     }
 }
