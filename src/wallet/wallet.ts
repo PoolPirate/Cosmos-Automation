@@ -1,9 +1,11 @@
-import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
+import { DirectSecp256k1HdWallet, coin } from "@cosmjs/proto-signing";
 import Config from "../../config.json"
 import { ExecuteInstruction, MsgExecuteContractEncodeObject, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { MsgExecuteContract } from "cosmjs-types/cosmwasm/wasm/v1/tx";
 import { toUtf8 } from "@cosmjs/encoding";
+import { ReconnectingSocket } from "@cosmjs/socket"
 import Semaphore from "semaphore-promise";
+import { handleNewBlock } from "../main";
 
 export enum Chain {
     Osmosis = "osmo"
@@ -16,6 +18,7 @@ interface ChainData {
     queryClient: SigningCosmWasmClient;
     queryAddress: string;
     feeCurrency: string;
+    peakHeight: number;
 }
 
 var chains: Map<Chain, ChainData> = null!;
@@ -40,6 +43,31 @@ export function getAddress(chain: Chain) {
     return chains.get(chain)!.address;
 }
 
+export async function refreshPeakHeights() {
+    const chains = Object.values(Chain) as Chain[];
+    chains.forEach(chain => refreshPeakHeight(chain, 1));
+}
+
+async function refreshPeakHeight(chain: Chain, callsSinceUpdate: number) {
+    const chainData = chains.get(chain)!;
+    const { queryClient, peakHeight } = chainData;
+
+    try {
+        const height = (await queryClient.getBlock()).header.height;
+
+        if (height > peakHeight) {
+            chainData.peakHeight = height;
+            setTimeout(() => refreshPeakHeight(chain, 1), 4000);
+            handleNewBlock(chain, height);
+            return;
+        }
+
+        setTimeout(() => refreshPeakHeight(chain, callsSinceUpdate + 1), Math.max(333, 800 / callsSinceUpdate));
+    } catch (error) {
+        setTimeout(() => refreshPeakHeight(chain, callsSinceUpdate), 1000);
+    }
+}
+
 async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
     const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(Config.mnemonics, {
         prefix: prefix
@@ -48,13 +76,16 @@ async function makeChainData(prefix: string, rpc: string, feeCurrency: string) {
         prefix: prefix
     });
 
+    const queryClient = await SigningCosmWasmClient.connectWithSigner(rpc, queryHdWallet);
+
     return {
         wallet: hdWallet,
         client: await SigningCosmWasmClient.connectWithSigner(rpc, hdWallet),
         address: (await hdWallet.getAccounts())[0]!.address,
-        queryClient: await SigningCosmWasmClient.connectWithSigner(rpc, queryHdWallet),
+        queryClient: queryClient,
         queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
-        feeCurrency: feeCurrency
+        feeCurrency: feeCurrency,
+        peakHeight: (await queryClient.getBlock()).header.height
     } satisfies ChainData;
 }
 

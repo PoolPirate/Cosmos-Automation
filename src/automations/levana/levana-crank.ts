@@ -7,10 +7,10 @@ interface LevanaStatus {
     next_crank: null | object;
 }
 
-export async function runLevanaCrank() {
+export async function runLevanaCrank(chain: Chain) {
     const marketsToCrank = (await Promise.all(Config.levana.markets.map(async market => {
         try {
-            const status = await queryContract(Chain.Osmosis, market.contract, {
+            const status = await queryContract(chain, market.contract, {
                 status: {}
             }) as LevanaStatus;
 
@@ -26,12 +26,12 @@ export async function runLevanaCrank() {
         return;
     }
 
-    await crankMarkets(marketsToCrank);
+    //await crankMarkets(marketsToCrank);
 }
 
-async function crankMarkets(markets: LevanaMarket[]) {
+async function crankMarkets(chain: Chain, markets: LevanaMarket[]) {
     try {
-        await executeMultiple(Chain.Osmosis,
+        await executeMultiple(chain,
             markets.map<ExecuteInstruction>(market => {
                 return {
                     contractAddress: market.contract,
@@ -46,7 +46,7 @@ async function crankMarkets(markets: LevanaMarket[]) {
     } catch (error) {
         if (error instanceof Error) {
             if (error.message.includes("Code: 11;")) { //Out of gas
-                await crankMarkets(markets);
+                await crankMarkets(chain, markets);
             }
         }
     }

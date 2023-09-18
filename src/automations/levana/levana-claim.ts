@@ -28,7 +28,7 @@ export async function runLevanaClaim() {
         return;
     }
 
-    await claimMarkets(marketsToClaim);
+    //await claimMarkets(marketsToClaim);
 }
 
 async function claimMarkets(markets: LevanaMarket[]) {
