@@ -31,6 +31,7 @@ export async function runLevanaClaim(chain: Chain) {
                         ? market
                         : null;
                 } catch (error) {
+                    console.error(`Claim Check Failed: ${error}`);
                     return null;
                 }
             }),

@@ -37,6 +37,7 @@ export async function runLevanaCrank(chain: Chain, blockDelay: number) {
 
                     return status.next_crank != null ? market : null;
                 } catch (error) {
+                    console.error(`Crank Check Failed: ${error}`);
                     return null;
                 }
             }),
