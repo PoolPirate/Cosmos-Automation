@@ -25,10 +25,12 @@ export async function handleNewBlock(
     height: number,
     timestamp: Date,
 ) {
-    const blockDelay = new Date().getTime() - timestamp.getTime();
+    const processingStartTimeMs = new Date().getTime();
+    const blockDelay = processingStartTimeMs - timestamp.getTime();
+
     console.log(`${chain} - ${height} (${blockDelay}ms late)`);
 
-    await runLevanaCrank(chain, blockDelay);
+    await runLevanaCrank(chain, processingStartTimeMs);
     lastCrankRun = new Date();
 }
 

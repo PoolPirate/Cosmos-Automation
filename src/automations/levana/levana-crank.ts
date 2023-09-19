@@ -9,9 +9,10 @@ interface LevanaStatus {
 
 var previousCrankTasks: Map<string, string> = new Map<string, string>();
 
-export async function runLevanaCrank(chain: Chain, blockDelay: number) {
-    const started = new Date().getTime();
-
+export async function runLevanaCrank(
+    chain: Chain,
+    processingStartTimeMs: number,
+) {
     const marketsToCrank = (
         await Promise.all(
             Config.levana.markets.map(async (market) => {
@@ -50,18 +51,19 @@ export async function runLevanaCrank(chain: Chain, blockDelay: number) {
         return;
     }
 
-    const elapsed = new Date().getTime() - started;
-
-    if (blockDelay + elapsed > 18000) {
-        console.log(`CRANK aborted - Delay: ${blockDelay} + ${elapsed}`);
-        return;
-    }
-
-    await crankMarkets(chain, marketsToCrank);
-    console.log(`CRANKED - Filter: ${elapsed}ms`);
+    await crankMarkets(chain, marketsToCrank, processingStartTimeMs);
+    console.log(
+        `CRANKED - Filter: ${new Date().getTime() - processingStartTimeMs}ms`,
+    );
 }
 
-async function crankMarkets(chain: Chain, markets: LevanaMarket[]) {
+var forceGasOverride: number | undefined = undefined;
+
+async function crankMarkets(
+    chain: Chain,
+    markets: LevanaMarket[],
+    processingStartTimeMs: number,
+) {
     try {
         await executeMultiple(
             chain,
@@ -75,11 +77,24 @@ async function crankMarkets(chain: Chain, markets: LevanaMarket[]) {
                     },
                 };
             }),
-            false,
-            170000 * markets.length,
+            {
+                minimumGas: 170000 * markets.length,
+                gasMultiplicator: forceGasOverride,
+                processingStartTimeMs: processingStartTimeMs,
+                maxProcessingDelayMs: 17000,
+            },
         );
+
+        forceGasOverride = undefined;
     } catch (error) {
-        console.log(`Crank TX Failed: ${error}`);
+        if (error instanceof Error && error.message.includes('Code 11;')) {
+            forceGasOverride = 2;
+            await crankMarkets(chain, markets, processingStartTimeMs);
+        } else {
+            forceGasOverride = undefined;
+            console.log(`Crank TX Failed: ${error}`);
+        }
+
         previousCrankTasks.clear();
     }
 }

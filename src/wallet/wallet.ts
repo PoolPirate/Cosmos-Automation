@@ -119,7 +119,30 @@ async function makeChainData(
     } satisfies ChainData;
 }
 
-async function tx<T>(func: () => Promise<T>) {
+async function tx<T>(func: () => Promise<T>, options?: ExecutionOptions) {
+    if (
+        options?.maxTotalDelayMs != undefined &&
+        options?.blockTimeMs != undefined
+    ) {
+        if (
+            options.blockTimeMs + options.maxTotalDelayMs <
+            new Date().getTime()
+        ) {
+            throw Error('Aborted: Total Delay too high');
+        }
+    }
+    if (
+        options?.maxProcessingDelayMs != undefined &&
+        options?.processingStartTimeMs != undefined
+    ) {
+        if (
+            options.processingStartTimeMs + options.maxProcessingDelayMs <
+            new Date().getTime()
+        ) {
+            throw Error('Aborted: Processing Delay too high');
+        }
+    }
+
     const release = await txSemaphore.acquire();
 
     try {
@@ -144,21 +167,35 @@ export async function queryContract(
     );
 }
 
+export interface ExecutionOptions {
+    simulateAsPrimary?: boolean;
+    minimumGas?: number;
+    gasMultiplicator?: number;
+    blockTimeMs?: number;
+    maxTotalDelayMs?: number;
+    processingStartTimeMs?: number;
+    maxProcessingDelayMs?: number;
+}
+const defaultExecutionOptions = {
+    simulateAsPrimary: false,
+    minimumGas: 0,
+    gasMultiplicator: 1.05,
+} as const satisfies ExecutionOptions;
+
 export async function executeMultiple(
     chain: Chain,
     instructions: ExecuteInstruction[],
-    simulateAsPrimary: boolean = false,
-    minimumGas: number = 0,
-    gasMultiplicator: number = 1.05,
+    execOptions: ExecutionOptions,
 ) {
+    const options = { ...defaultExecutionOptions, ...execOptions };
     const gas = await estimateExecuteGas(
         chain,
         instructions,
-        simulateAsPrimary,
+        options.simulateAsPrimary,
     );
-    const bufferedGas = Math.ceil(gasMultiplicator * gas);
+    const bufferedGas = Math.ceil(options.gasMultiplicator * gas);
 
-    if (gas < minimumGas) {
+    if (gas < options.minimumGas) {
         return;
     }
 
@@ -174,7 +211,7 @@ export async function executeMultiple(
             ],
             gas: `${bufferedGas}`,
         });
-    });
+    }, options);
 }
 
 async function estimateExecuteGas(
