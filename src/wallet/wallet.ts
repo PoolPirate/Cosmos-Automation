@@ -193,6 +193,7 @@ export async function executeMultiple(
         instructions,
         options.simulateAsPrimary,
     );
+
     const bufferedGas = Math.ceil(options.gasMultiplicator * gas);
 
     if (gas < options.minimumGas) {
