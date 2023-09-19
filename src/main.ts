@@ -13,7 +13,7 @@ async function main() {
 
     setTimeout(refreshPeakHeights, 1000); //Self refreshing
 
-    setInterval(runLevanaClaim, 14400000);
+    setInterval(runLevanaClaim, 1000 * 60 * 60 * 2);
 
     await runLevanaClaim(Chain.Osmosis);
 
