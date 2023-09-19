@@ -79,7 +79,7 @@ async function crankMarkets(
             }),
             {
                 minimumGas: 170000 * markets.length,
-                gasMultiplicator: forceGasOverride ?? 1.04,
+                gasMultiplicator: forceGasOverride ?? 1.05,
                 processingStartTimeMs: processingStartTimeMs,
                 maxProcessingDelayMs: 17000,
             },
