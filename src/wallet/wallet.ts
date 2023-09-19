@@ -179,7 +179,7 @@ export interface ExecutionOptions {
 const defaultExecutionOptions = {
     simulateAsPrimary: false,
     minimumGas: 0,
-    gasMultiplicator: 1.05,
+    gasMultiplicator: 1.08,
 } as const satisfies ExecutionOptions;
 
 export async function executeMultiple(
