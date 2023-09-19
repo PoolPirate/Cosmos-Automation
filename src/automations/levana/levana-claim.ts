@@ -13,6 +13,7 @@ interface LevanaLPInfo {
 }
 
 export async function runLevanaClaim(chain: Chain) {
+    console.log('Running Levana Claim');
     const marketsToClaim = (
         await Promise.all(
             Config.levana.markets.map(async (market) => {
@@ -41,6 +42,7 @@ export async function runLevanaClaim(chain: Chain) {
         .map<LevanaMarket>((x) => x!);
 
     if (marketsToClaim.length == 0) {
+        console.log('Aborting: No Markets to claim found!');
         return;
     }
 
