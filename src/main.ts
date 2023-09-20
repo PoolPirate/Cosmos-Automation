@@ -1,5 +1,6 @@
 import { runLevanaClaim } from './automations/levana/levana-claim';
 import { runLevanaCrank } from './automations/levana/levana-crank';
+import { runCleanupDustAsync } from './automations/swaps/cleanup-dust';
 import { Chain, initializeWallet, refreshPeakHeights } from './wallet/wallet';
 
 main()
@@ -13,11 +14,16 @@ async function main() {
 
     setTimeout(refreshPeakHeights, 1000); //Self refreshing
 
-    setInterval(() => runLevanaClaim(Chain.Osmosis), 1000 * 60 * 60 * 6);
+    setInterval(runAssetShifting, 1000 * 60 * 60 * 8);
 
-    await runLevanaClaim(Chain.Osmosis);
+    await runAssetShifting();
 
     await sleepInfinite();
+}
+
+async function runAssetShifting() {
+    await runLevanaClaim(Chain.Osmosis);
+    await runCleanupDustAsync(Chain.Osmosis);
 }
 
 export async function handleNewBlock(

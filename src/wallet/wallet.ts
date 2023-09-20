@@ -1,4 +1,8 @@
-import { DirectSecp256k1HdWallet, coin } from '@cosmjs/proto-signing';
+import {
+    DirectSecp256k1HdWallet,
+    EncodeObject,
+    coin,
+} from '@cosmjs/proto-signing';
 import Config from '../../config.json';
 import {
     ExecuteInstruction,
@@ -23,6 +27,8 @@ interface ChainData {
     queryAddress: string;
     feeCurrency: string;
     peakHeight: number;
+
+    owner: string;
 }
 
 var chains: Map<Chain, ChainData> = null!;
@@ -40,6 +46,7 @@ export async function initializeWallet() {
             chain.queryRpc,
             chain.txRpc,
             chain.feeCurrency,
+            chain.owner,
         );
         chains.set(chain.prefix as Chain, chainData);
         console.log(`${chain.prefix} - ${chainData.txAddress}`);
@@ -86,6 +93,7 @@ async function makeChainData(
     queryRpc: string,
     txRpc: string,
     feeCurrency: string,
+    owner: string,
 ) {
     const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(
         Config.mnemonics,
@@ -116,6 +124,7 @@ async function makeChainData(
         queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
         feeCurrency: feeCurrency,
         peakHeight: (await queryClient.getBlock()).header.height,
+        owner: owner,
     } satisfies ChainData;
 }
 
@@ -161,10 +170,44 @@ export async function queryContract(
     contract: string,
     message: any,
 ) {
-    const { queryClient } = chains.get(Chain.Osmosis)!;
+    const { queryClient } = chains.get(chain)!;
     return await query(
         async () => await queryClient.queryContractSmart(contract, message),
     );
+}
+
+export async function getBalance(chain: Chain, denom: string) {
+    const { queryClient, txAddress } = chains.get(chain)!;
+
+    const coin = await queryClient.getBalance(txAddress, denom);
+    return parseInt(coin.amount);
+}
+
+export async function send(
+    chain: Chain,
+    recipient: string,
+    denom: string,
+    amount: number,
+) {
+    const { txAddress, txClient } = chains.get(chain)!;
+
+    tx(
+        async () =>
+            await txClient.sendTokens(
+                txAddress,
+                recipient,
+                [coin(amount, denom)],
+                {
+                    gas: '90000',
+                    amount: [coin(Math.ceil(90000 * 0.0025), 'uosmo')],
+                },
+            ),
+    );
+}
+
+export async function sendToOwner(chain: Chain, denom: string, amount: number) {
+    const { owner } = chains.get(chain)!;
+    await send(chain, owner, denom, amount);
 }
 
 export interface ExecutionOptions {
@@ -204,6 +247,39 @@ export async function executeMultiple(
 
     await tx(async () => {
         await txClient.executeMultiple(txAddress, instructions, {
+            amount: [
+                {
+                    denom: 'uosmo',
+                    amount: `${Math.ceil(0.0025 * bufferedGas)}`,
+                },
+            ],
+            gas: `${bufferedGas}`,
+        });
+    }, options);
+}
+
+export async function transactMultiple(
+    chain: Chain,
+    instructions: EncodeObject[],
+    execOptions: ExecutionOptions,
+) {
+    const options = { ...defaultExecutionOptions, ...execOptions };
+    const gas = await estimateTransactGas(
+        chain,
+        instructions,
+        options.simulateAsPrimary,
+    );
+
+    const bufferedGas = Math.ceil(options.gasMultiplicator * gas);
+
+    if (gas < options.minimumGas) {
+        return;
+    }
+
+    const { txClient, txAddress } = chains.get(Chain.Osmosis)!;
+
+    await tx(async () => {
+        await txClient.signAndBroadcast(txAddress, instructions, {
             amount: [
                 {
                     denom: 'uosmo',
@@ -256,6 +332,32 @@ async function estimateExecuteGas(
 
         return await tx(
             async () => await txClient.simulate(txAddress, msgs, undefined),
+        );
+    }
+}
+
+async function estimateTransactGas(
+    chain: Chain,
+    instructions: EncodeObject[],
+    usePrimary: boolean,
+) {
+    if (!usePrimary) {
+        const { queryClient, queryAddress } = chains.get(chain)!;
+
+        return await query(
+            async () =>
+                await queryClient.simulate(
+                    queryAddress,
+                    instructions,
+                    undefined,
+                ),
+        );
+    } else {
+        const { txClient, txAddress } = chains.get(chain)!;
+
+        return await tx(
+            async () =>
+                await txClient.simulate(txAddress, instructions, undefined),
         );
     }
 }
