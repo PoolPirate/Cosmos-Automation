@@ -7,6 +7,7 @@ import {
 } from '../../wallet/wallet';
 import { ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
 import { ChainName } from '../../wallet/types';
+import { prettifyDenom } from '../../main';
 
 interface LevanaLPInfo {
     available_crank_rewards: string;
@@ -30,9 +31,21 @@ export async function runLevanaClaim(chain: ChainName) {
                             },
                         )) as LevanaLPInfo;
 
-                        return parseFloat(lpInfo.available_crank_rewards) > 0
-                            ? market
-                            : null;
+                        const rewards = parseFloat(
+                            lpInfo.available_crank_rewards,
+                        );
+
+                        if (rewards > 0) {
+                            console.log(
+                                `Levana Claim: Claiming ${rewards} ${prettifyDenom(
+                                    chain,
+                                    market.denom,
+                                )}`,
+                            );
+                            return market;
+                        }
+
+                        return null;
                     } catch (error) {
                         console.error(`Claim Check Failed: ${error}`);
                         return null;
