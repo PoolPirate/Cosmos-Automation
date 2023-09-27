@@ -14,30 +14,13 @@ import { toUtf8 } from '@cosmjs/encoding';
 import { ReconnectingSocket } from '@cosmjs/socket';
 import Semaphore from 'semaphore-promise';
 import { handleNewBlock } from '../main';
+import { ChainName, ChainData } from './types';
 
-export enum Chain {
-    Osmosis = 'osmo',
-}
-
-interface ChainData {
-    wallet: DirectSecp256k1HdWallet;
-    txClient: SigningCosmWasmClient;
-    txAddress: string;
-    queryClient: SigningCosmWasmClient;
-    queryAddress: string;
-    feeCurrency: string;
-    peakHeight: number;
-
-    owner: string;
-}
-
-var chains: Map<Chain, ChainData> = null!;
-
-const txSemaphore = new Semaphore(1);
+var chains: Map<ChainName, ChainData> = null!;
 
 export async function initializeWallet() {
     console.log('Initializing wallet');
-    chains = new Map<Chain, ChainData>();
+    chains = new Map<ChainName, ChainData>();
 
     for (let i = 0; i < Config.chains.length; i++) {
         const chain = Config.chains[i]!;
@@ -46,25 +29,24 @@ export async function initializeWallet() {
             chain.queryRpc,
             chain.txRpc,
             chain.feeCurrency,
-            chain.owner,
         );
-        chains.set(chain.prefix as Chain, chainData);
+        chains.set(chain.name as ChainName, chainData);
         console.log(`${chain.prefix} - ${chainData.txAddress}`);
     }
 
     console.log('Wallet setup complete');
 }
 
-export function getAddress(chain: Chain) {
+export function getAddress(chain: ChainName) {
     return chains.get(chain)!.txAddress;
 }
 
-export async function refreshPeakHeights() {
-    const chains = Object.values(Chain) as Chain[];
+export function refreshPeakHeights() {
+    const chains = Object.values(ChainName) as ChainName[];
     chains.forEach((chain) => refreshPeakHeight(chain, 1));
 }
 
-async function refreshPeakHeight(chain: Chain, callsSinceUpdate: number) {
+async function refreshPeakHeight(chain: ChainName, callsSinceUpdate: number) {
     const chainData = chains.get(chain)!;
     const { queryClient, peakHeight } = chainData;
 
@@ -93,7 +75,6 @@ async function makeChainData(
     queryRpc: string,
     txRpc: string,
     feeCurrency: string,
-    owner: string,
 ) {
     const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(
         Config.mnemonics,
@@ -120,15 +101,21 @@ async function makeChainData(
             hdWallet,
         ),
         txAddress: (await hdWallet.getAccounts())[0]!.address,
+        txSemaphore: new Semaphore(1),
         queryClient: queryClient,
         queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
         feeCurrency: feeCurrency,
         peakHeight: (await queryClient.getBlock()).header.height,
-        owner: owner,
     } satisfies ChainData;
 }
 
-async function tx<T>(func: () => Promise<T>, options?: ExecutionOptions) {
+async function tx<T>(
+    chain: ChainName,
+    func: () => Promise<T>,
+    options?: ExecutionOptions,
+) {
+    const semaphore = chains.get(chain)!.txSemaphore;
+
     if (
         options?.maxTotalDelayMs != undefined &&
         options?.blockTimeMs != undefined
@@ -152,7 +139,7 @@ async function tx<T>(func: () => Promise<T>, options?: ExecutionOptions) {
         }
     }
 
-    const release = await txSemaphore.acquire();
+    const release = await semaphore.acquire();
 
     try {
         return await func();
@@ -166,7 +153,7 @@ async function query<T>(func: () => Promise<T>) {
 }
 
 export async function queryContract(
-    chain: Chain,
+    chain: ChainName,
     contract: string,
     message: any,
 ) {
@@ -176,7 +163,7 @@ export async function queryContract(
     );
 }
 
-export async function getBalance(chain: Chain, denom: string) {
+export async function getBalance(chain: ChainName, denom: string) {
     const { queryClient, txAddress } = chains.get(chain)!;
 
     const coin = await queryClient.getBalance(txAddress, denom);
@@ -184,7 +171,7 @@ export async function getBalance(chain: Chain, denom: string) {
 }
 
 export async function send(
-    chain: Chain,
+    chain: ChainName,
     recipient: string,
     denom: string,
     amount: number,
@@ -192,6 +179,7 @@ export async function send(
     const { txAddress, txClient } = chains.get(chain)!;
 
     tx(
+        chain,
         async () =>
             await txClient.sendTokens(
                 txAddress,
@@ -203,11 +191,6 @@ export async function send(
                 },
             ),
     );
-}
-
-export async function sendToOwner(chain: Chain, denom: string, amount: number) {
-    const { owner } = chains.get(chain)!;
-    await send(chain, owner, denom, amount);
 }
 
 export interface ExecutionOptions {
@@ -226,7 +209,7 @@ const defaultExecutionOptions = {
 } as const satisfies ExecutionOptions;
 
 export async function executeMultiple(
-    chain: Chain,
+    chain: ChainName,
     instructions: ExecuteInstruction[],
     execOptions: ExecutionOptions,
 ) {
@@ -243,23 +226,27 @@ export async function executeMultiple(
         return;
     }
 
-    const { txClient, txAddress } = chains.get(Chain.Osmosis)!;
+    const { txClient, txAddress } = chains.get(ChainName.Osmosis)!;
 
-    await tx(async () => {
-        await txClient.executeMultiple(txAddress, instructions, {
-            amount: [
-                {
-                    denom: 'uosmo',
-                    amount: `${Math.ceil(0.0025 * bufferedGas)}`,
-                },
-            ],
-            gas: `${bufferedGas}`,
-        });
-    }, options);
+    await tx(
+        chain,
+        async () => {
+            await txClient.executeMultiple(txAddress, instructions, {
+                amount: [
+                    {
+                        denom: 'uosmo',
+                        amount: `${Math.ceil(0.0025 * bufferedGas)}`,
+                    },
+                ],
+                gas: `${bufferedGas}`,
+            });
+        },
+        options,
+    );
 }
 
 export async function transactMultiple(
-    chain: Chain,
+    chain: ChainName,
     instructions: EncodeObject[],
     execOptions: ExecutionOptions,
 ) {
@@ -276,23 +263,27 @@ export async function transactMultiple(
         return;
     }
 
-    const { txClient, txAddress } = chains.get(Chain.Osmosis)!;
+    const { txClient, txAddress } = chains.get(ChainName.Osmosis)!;
 
-    await tx(async () => {
-        await txClient.signAndBroadcast(txAddress, instructions, {
-            amount: [
-                {
-                    denom: 'uosmo',
-                    amount: `${Math.ceil(0.0025 * bufferedGas)}`,
-                },
-            ],
-            gas: `${bufferedGas}`,
-        });
-    }, options);
+    await tx(
+        chain,
+        async () => {
+            await txClient.signAndBroadcast(txAddress, instructions, {
+                amount: [
+                    {
+                        denom: 'uosmo',
+                        amount: `${Math.ceil(0.0025 * bufferedGas)}`,
+                    },
+                ],
+                gas: `${bufferedGas}`,
+            });
+        },
+        options,
+    );
 }
 
 async function estimateExecuteGas(
-    chain: Chain,
+    chain: ChainName,
     instructions: ExecuteInstruction[],
     usePrimary: boolean,
 ) {
@@ -331,13 +322,14 @@ async function estimateExecuteGas(
         );
 
         return await tx(
+            chain,
             async () => await txClient.simulate(txAddress, msgs, undefined),
         );
     }
 }
 
 async function estimateTransactGas(
-    chain: Chain,
+    chain: ChainName,
     instructions: EncodeObject[],
     usePrimary: boolean,
 ) {
@@ -356,6 +348,7 @@ async function estimateTransactGas(
         const { txClient, txAddress } = chains.get(chain)!;
 
         return await tx(
+            chain,
             async () =>
                 await txClient.simulate(txAddress, instructions, undefined),
         );

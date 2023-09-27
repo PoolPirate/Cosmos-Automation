@@ -1,7 +1,11 @@
 import { runLevanaClaim } from './automations/levana/levana-claim';
 import { runLevanaCrank } from './automations/levana/levana-crank';
-import { runCleanupDustAsync } from './automations/swaps/cleanup-dust';
-import { Chain, initializeWallet, refreshPeakHeights } from './wallet/wallet';
+import { initializeWallet, refreshPeakHeights } from './wallet/wallet';
+import { ChainName } from './wallet/types';
+import { runAutoSwapAsync } from './automations/swaps/autoswap';
+import { initializeSkip } from './skip-api/skip-api';
+import { runBuyGas } from './automations/swaps/buy-gas';
+import { runFlushAsync } from './automations/swaps/flush';
 
 main()
     .then(() => {})
@@ -11,23 +15,24 @@ var lastCrankRun: Date;
 
 async function main() {
     await initializeWallet();
+    await initializeSkip();
 
     setTimeout(refreshPeakHeights, 1000); //Self refreshing
-
     setInterval(runAssetShifting, 1000 * 60 * 60 * 24);
 
     await runAssetShifting();
-
     await sleepInfinite();
 }
 
 async function runAssetShifting() {
-    await runLevanaClaim(Chain.Osmosis);
-    await runCleanupDustAsync(Chain.Osmosis);
+    await runLevanaClaim(ChainName.Osmosis);
+    await runAutoSwapAsync(ChainName.Osmosis);
+    await runBuyGas();
+    await runFlushAsync();
 }
 
 export async function handleNewBlock(
-    chain: Chain,
+    chain: ChainName,
     height: number,
     timestamp: Date,
 ) {

@@ -1,7 +1,8 @@
 import { ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
 import Config from '../../../config.json';
-import { Chain, executeMultiple, queryContract } from '../../wallet/wallet';
+import { executeMultiple, queryContract } from '../../wallet/wallet';
 import { LevanaMarket } from './common';
+import { ChainName } from '../../wallet/types';
 
 interface LevanaStatus {
     next_crank: null | object;
@@ -10,38 +11,40 @@ interface LevanaStatus {
 var previousCrankTasks: Map<string, string> = new Map<string, string>();
 
 export async function runLevanaCrank(
-    chain: Chain,
+    chain: ChainName,
     processingStartTimeMs: number,
 ) {
     const marketsToCrank = (
         await Promise.all(
-            Config.levana.markets.map(async (market) => {
-                try {
-                    const status = (await queryContract(
-                        chain,
-                        market.contract,
-                        {
-                            status: {},
-                        },
-                    )) as LevanaStatus;
+            Config.chains
+                .find((x) => x.name == chain)!
+                .levana.markets.map(async (market) => {
+                    try {
+                        const status = (await queryContract(
+                            chain,
+                            market.contract,
+                            {
+                                status: {},
+                            },
+                        )) as LevanaStatus;
 
-                    if (
-                        previousCrankTasks.get(market.contract) ==
-                        JSON.stringify(status.next_crank)
-                    ) {
+                        if (
+                            previousCrankTasks.get(market.contract) ==
+                            JSON.stringify(status.next_crank)
+                        ) {
+                            return null;
+                        }
+                        previousCrankTasks.set(
+                            market.contract,
+                            JSON.stringify(status.next_crank),
+                        );
+
+                        return status.next_crank != null ? market : null;
+                    } catch (error) {
+                        console.error(`Crank Check Failed: ${error}`);
                         return null;
                     }
-                    previousCrankTasks.set(
-                        market.contract,
-                        JSON.stringify(status.next_crank),
-                    );
-
-                    return status.next_crank != null ? market : null;
-                } catch (error) {
-                    console.error(`Crank Check Failed: ${error}`);
-                    return null;
-                }
-            }),
+                }),
         )
     )
         .filter((x) => x != null)
@@ -60,7 +63,7 @@ export async function runLevanaCrank(
 var forceGasOverride: number | undefined = undefined;
 
 async function crankMarkets(
-    chain: Chain,
+    chain: ChainName,
     markets: LevanaMarket[],
     processingStartTimeMs: number,
 ) {
