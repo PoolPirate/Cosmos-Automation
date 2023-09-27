@@ -178,7 +178,7 @@ export async function send(
 ) {
     const { txAddress, txClient } = chains.get(chain)!;
 
-    tx(
+    await tx(
         chain,
         async () =>
             await txClient.sendTokens(
