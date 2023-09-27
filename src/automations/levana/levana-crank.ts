@@ -84,7 +84,7 @@ async function crankMarkets(
             {
                 minimumGas: 210000 * markets.length,
                 gasMultiplicator: forceGasOverride ?? 1.06,
-                gasBuffer: 100000,
+                gasBuffer: 75000,
                 processingStartTimeMs: processingStartTimeMs,
                 maxProcessingDelayMs: 17000,
             },
