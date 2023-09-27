@@ -14,47 +14,51 @@ export async function runLevanaCrank(
     chain: ChainName,
     processingStartTimeMs: number,
 ) {
-    const marketsToCrank = (
-        await Promise.all(
-            Config.chains
-                .find((x) => x.name == chain)!
-                .levana.markets.map(async (market) => {
-                    try {
-                        const status = (await queryContract(
-                            chain,
-                            market.contract,
-                            {
-                                status: {},
-                            },
-                        )) as LevanaStatus;
+    try {
+        const marketsToCrank = (
+            await Promise.all(
+                Config.chains
+                    .find((x) => x.name == chain)!
+                    .levana.markets.map(async (market) => {
+                        try {
+                            const status = (await queryContract(
+                                chain,
+                                market.contract,
+                                {
+                                    status: {},
+                                },
+                            )) as LevanaStatus;
 
-                        if (
-                            previousCrankTasks.get(market.contract) ==
-                            JSON.stringify(status.next_crank)
-                        ) {
+                            if (
+                                previousCrankTasks.get(market.contract) ==
+                                JSON.stringify(status.next_crank)
+                            ) {
+                                return null;
+                            }
+                            previousCrankTasks.set(
+                                market.contract,
+                                JSON.stringify(status.next_crank),
+                            );
+
+                            return status.next_crank != null ? market : null;
+                        } catch (error) {
+                            console.error(`Crank Check Failed: ${error}`);
                             return null;
                         }
-                        previousCrankTasks.set(
-                            market.contract,
-                            JSON.stringify(status.next_crank),
-                        );
-
-                        return status.next_crank != null ? market : null;
-                    } catch (error) {
-                        console.error(`Crank Check Failed: ${error}`);
-                        return null;
-                    }
-                }),
+                    }),
+            )
         )
-    )
-        .filter((x) => x != null)
-        .map<LevanaMarket>((x) => x!);
+            .filter((x) => x != null)
+            .map<LevanaMarket>((x) => x!);
 
-    if (marketsToCrank.length == 0) {
-        return;
+        if (marketsToCrank.length == 0) {
+            return;
+        }
+
+        await crankMarkets(chain, marketsToCrank, processingStartTimeMs);
+    } catch (error) {
+        console.error('Cranking Died');
     }
-
-    await crankMarkets(chain, marketsToCrank, processingStartTimeMs);
 }
 
 var forceGasOverride: number | undefined = undefined;
@@ -93,9 +97,18 @@ async function crankMarkets(
         forceGasOverride = undefined;
     } catch (error) {
         if (String(error).includes('out of gas')) {
-            forceGasOverride = 1.8;
+            forceGasOverride = forceGasOverride ?? 1 + 1;
             console.log('Crank TX Failed: Out of Gas, Repeating');
-            await crankMarkets(chain, markets, processingStartTimeMs);
+            await crankMarkets(chain, markets, processingStartTimeMs)
+                .then(() => {
+                    console.log(
+                        `Crank TX Successful - Filter: ${
+                            new Date().getTime() - processingStartTimeMs
+                        }ms`,
+                    );
+                    forceGasOverride = undefined;
+                })
+                .catch(() => {});
         } else {
             forceGasOverride = undefined;
             console.log(`Crank TX Failed: ${error}`);
