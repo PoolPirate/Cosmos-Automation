@@ -143,7 +143,6 @@ async function tx<T>(
 
         return await func();
     } finally {
-        await new Promise((resolve) => setTimeout(resolve, 500));
         release();
     }
 }
