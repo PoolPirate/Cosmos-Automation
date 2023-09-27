@@ -116,34 +116,35 @@ async function tx<T>(
 ) {
     const semaphore = chains.get(chain)!.txSemaphore;
 
-    if (
-        options?.maxTotalDelayMs != undefined &&
-        options?.blockTimeMs != undefined
-    ) {
-        if (
-            options.blockTimeMs + options.maxTotalDelayMs <
-            new Date().getTime()
-        ) {
-            throw Error('Aborted: Total Delay too high');
-        }
-    }
-    if (
-        options?.maxProcessingDelayMs != undefined &&
-        options?.processingStartTimeMs != undefined
-    ) {
-        if (
-            options.processingStartTimeMs + options.maxProcessingDelayMs <
-            new Date().getTime()
-        ) {
-            throw Error('Aborted: Processing Delay too high');
-        }
-    }
-
     const release = await semaphore.acquire();
 
     try {
+        if (
+            options?.maxTotalDelayMs != undefined &&
+            options?.blockTimeMs != undefined
+        ) {
+            if (
+                options.blockTimeMs + options.maxTotalDelayMs <
+                new Date().getTime()
+            ) {
+                throw Error('Aborted: Total Delay too high');
+            }
+        }
+        if (
+            options?.maxProcessingDelayMs != undefined &&
+            options?.processingStartTimeMs != undefined
+        ) {
+            if (
+                options.processingStartTimeMs + options.maxProcessingDelayMs <
+                new Date().getTime()
+            ) {
+                throw Error('Aborted: Processing Delay too high');
+            }
+        }
+
         return await func();
     } finally {
+        await new Promise((resolve) => setTimeout(resolve, 500));
         release();
     }
 }
