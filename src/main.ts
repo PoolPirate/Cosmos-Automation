@@ -14,7 +14,7 @@ async function main() {
 
     setTimeout(refreshPeakHeights, 1000); //Self refreshing
 
-    setInterval(runAssetShifting, 1000 * 60 * 60 * 8);
+    setInterval(runAssetShifting, 1000 * 60 * 60 * 24);
 
     await runAssetShifting();
 
