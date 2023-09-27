@@ -197,6 +197,7 @@ export interface ExecutionOptions {
     simulateAsPrimary?: boolean;
     minimumGas?: number;
     gasMultiplicator?: number;
+    gasBuffer?: number;
     blockTimeMs?: number;
     maxTotalDelayMs?: number;
     processingStartTimeMs?: number;
@@ -220,7 +221,9 @@ export async function executeMultiple(
         options.simulateAsPrimary,
     );
 
-    const bufferedGas = Math.ceil(options.gasMultiplicator * gas);
+    const bufferedGas = Math.ceil(
+        options.gasMultiplicator * gas + (options.gasBuffer ?? 0),
+    );
 
     if (gas < options.minimumGas) {
         return;

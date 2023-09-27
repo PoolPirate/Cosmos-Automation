@@ -83,7 +83,8 @@ async function crankMarkets(
             }),
             {
                 minimumGas: 210000 * markets.length,
-                gasMultiplicator: forceGasOverride ?? 1.08,
+                gasMultiplicator: forceGasOverride ?? 1.06,
+                gasBuffer: 100000,
                 processingStartTimeMs: processingStartTimeMs,
                 maxProcessingDelayMs: 17000,
             },
@@ -97,7 +98,7 @@ async function crankMarkets(
         forceGasOverride = undefined;
     } catch (error) {
         if (String(error).includes('out of gas')) {
-            forceGasOverride = forceGasOverride ?? 1 + 0.4;
+            forceGasOverride = forceGasOverride ?? 1 + 0.2;
             console.log('Crank TX Failed: Out of Gas, Repeating');
             await crankMarkets(chain, markets, processingStartTimeMs)
                 .then(() => {
