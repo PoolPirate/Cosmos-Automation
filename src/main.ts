@@ -6,6 +6,7 @@ import { runAutoSwapAsync } from './automations/swaps/autoswap';
 import { initializeSkip } from './skip-api/skip-api';
 import { runBuyGas } from './automations/swaps/buy-gas';
 import { runFlushAsync } from './automations/swaps/flush';
+import Config from '../config.json';
 
 main()
     .then(() => {})
@@ -31,15 +32,8 @@ async function runAssetShifting() {
     await runFlushAsync();
 }
 
-export async function handleNewBlock(
-    chain: ChainName,
-    height: number,
-    timestamp: Date,
-) {
+export async function handleNewBlock(chain: ChainName) {
     const processingStartTimeMs = new Date().getTime();
-    const blockDelay = processingStartTimeMs - timestamp.getTime();
-
-    console.log(`${chain} - ${height} (${blockDelay}ms late)`);
 
     await runLevanaCrank(chain, processingStartTimeMs);
     lastCrankRun = new Date();
@@ -47,4 +41,26 @@ export async function handleNewBlock(
 
 async function sleepInfinite() {
     await new Promise(() => {});
+}
+
+export function prettifyCoin(denom: string, amount: number) {
+    const tokenLabel = Config.labels.find((x) => x.denom == denom);
+
+    if (tokenLabel == null) {
+        return `${amount} ${denom}`;
+    }
+
+    return `${Math.round(
+        (1000 * amount) / Math.pow(10, tokenLabel.decimals) / 1000,
+    )} ${tokenLabel.symbol}`;
+}
+
+export function prettifyDenom(chain: ChainName, denom: string) {
+    const tokenLabel = Config.labels.find((x) => x.denom == denom);
+
+    if (tokenLabel == null) {
+        return `${denom}`;
+    }
+
+    return `${tokenLabel.symbol} (${chain})`;
 }

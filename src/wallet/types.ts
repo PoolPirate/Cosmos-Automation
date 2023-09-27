@@ -4,6 +4,7 @@ import Semaphore from 'semaphore-promise';
 
 export enum ChainName {
     Osmosis = 'osmosis',
+    Injective = 'injective',
 }
 
 export interface ChainData {

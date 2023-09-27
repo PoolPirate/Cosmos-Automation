@@ -9,8 +9,11 @@ import { getSwapMessage } from '../../skip-api/skip-api';
 import { ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
 import { SkipMessage } from '../../skip-api/types';
 import { toUtf8 } from '@cosmjs/encoding';
+import { prettifyDenom } from '../../main';
 
 export async function runAutoSwapAsync(chain: ChainName) {
+    console.log('Running AutoSwap');
+
     try {
         const msgs: SkipMessage[] = [];
 
@@ -23,7 +26,12 @@ export async function runAutoSwapAsync(chain: ChainName) {
             const balance = await getBalance(chain, denom);
 
             if (balance == 0) {
-                console.log(`Skip swapping asset: ${denom}. Balance is 0!`);
+                console.log(
+                    `Skip swapping asset: ${prettifyDenom(
+                        chain,
+                        denom,
+                    )}. Balance is 0!`,
+                );
                 continue;
             }
 

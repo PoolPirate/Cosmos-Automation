@@ -55,9 +55,6 @@ export async function runLevanaCrank(
     }
 
     await crankMarkets(chain, marketsToCrank, processingStartTimeMs);
-    console.log(
-        `CRANKED - Filter: ${new Date().getTime() - processingStartTimeMs}ms`,
-    );
 }
 
 var forceGasOverride: number | undefined = undefined;
@@ -88,10 +85,15 @@ async function crankMarkets(
             },
         );
 
+        console.log(
+            `Crank TX Successful - Filter: ${
+                new Date().getTime() - processingStartTimeMs
+            }ms`,
+        );
         forceGasOverride = undefined;
     } catch (error) {
-        if (error instanceof Error && error.message.includes('Code 11;')) {
-            forceGasOverride = 3;
+        if (String(error).includes('out of gas')) {
+            forceGasOverride = 1.8;
             console.log('Crank TX Failed: Out of Gas, Repeating');
             await crankMarkets(chain, markets, processingStartTimeMs);
         } else {

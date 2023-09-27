@@ -5,8 +5,11 @@ import { getBalance, transactMultiple } from '../../wallet/wallet';
 import { ChainName } from '../../wallet/types';
 import { getConversionRate, getSwapMessage } from '../../skip-api/skip-api';
 import { toUtf8 } from '@cosmjs/encoding';
+import { prettifyCoin } from '../../main';
 
 export async function runBuyGas() {
+    console.log('Running Buy Gas');
+
     try {
         const msgs: SkipMessage[] = [];
 
@@ -54,6 +57,16 @@ export async function runBuyGas() {
                 chain.name as ChainName,
                 chain.feeCurrency,
                 cost,
+            );
+
+            console.log(
+                `Buying gas: ${prettifyCoin(
+                    Config.autoswap.targetDenom,
+                    cost,
+                )} swapped for ${prettifyCoin(
+                    chain.feeCurrency,
+                    chain.minBalance - balance,
+                )}`,
             );
 
             if (msg == null) {

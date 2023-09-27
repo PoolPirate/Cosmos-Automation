@@ -11,7 +11,6 @@ import {
 } from '@cosmjs/cosmwasm-stargate';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { toUtf8 } from '@cosmjs/encoding';
-import { ReconnectingSocket } from '@cosmjs/socket';
 import Semaphore from 'semaphore-promise';
 import { handleNewBlock } from '../main';
 import { ChainName, ChainData } from './types';
@@ -57,7 +56,7 @@ async function refreshPeakHeight(chain: ChainName, callsSinceUpdate: number) {
         if (height > peakHeight) {
             chainData.peakHeight = height;
             setTimeout(() => refreshPeakHeight(chain, 1), 4400);
-            handleNewBlock(chain, height, new Date(block.header.time));
+            handleNewBlock(chain);
             return;
         }
 
