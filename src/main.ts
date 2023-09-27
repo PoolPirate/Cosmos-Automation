@@ -26,12 +26,16 @@ async function main() {
 }
 
 async function runAssetShifting() {
-    await runLevanaClaim(ChainName.Osmosis);
-    await runLevanaClaim(ChainName.Injective);
-    await runAutoSwapAsync(ChainName.Osmosis);
-    await runAutoSwapAsync(ChainName.Injective);
-    await runBuyGas();
-    await runFlushAsync();
+    try {
+        await runLevanaClaim(ChainName.Osmosis);
+        await runLevanaClaim(ChainName.Injective);
+        await runAutoSwapAsync(ChainName.Osmosis);
+        await runAutoSwapAsync(ChainName.Injective);
+        await runBuyGas();
+        await runFlushAsync();
+    } catch (error) {
+        console.log(`Asset shit failed: ${error}`);
+    }
 }
 
 export async function handleNewBlock(chain: ChainName) {
