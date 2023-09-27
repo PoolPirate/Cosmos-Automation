@@ -5,7 +5,7 @@ import { getBalance, transactMultiple } from '../../wallet/wallet';
 import { ChainName } from '../../wallet/types';
 import { getConversionRate, getSwapMessage } from '../../skip-api/skip-api';
 import { toUtf8 } from '@cosmjs/encoding';
-import { prettifyCoin } from '../../main';
+import { prettifyCoin, prettifyDenom } from '../../main';
 
 export async function runBuyGas() {
     console.log('Running Buy Gas');
@@ -17,6 +17,16 @@ export async function runBuyGas() {
             Config.autoswap.targetChainName as ChainName,
             Config.autoswap.targetDenom,
         );
+
+        if (intermediaryBalance == 0) {
+            console.log(
+                `Skipping Buying Gas: ${prettifyDenom(
+                    Config.autoswap.targetChainName as ChainName,
+                    Config.autoswap.targetDenom,
+                )} is 0!`,
+            );
+            return;
+        }
 
         for (let i = 0; i < Config.chains.length; i++) {
             if (intermediaryBalance == 0) {
@@ -31,6 +41,12 @@ export async function runBuyGas() {
             );
 
             if (balance >= chain.minBalance) {
+                console.log(
+                    `Skipping Buying Gas Asset: Minimum Balance reached (${prettifyCoin(
+                        chain.feeCurrency,
+                        balance,
+                    )})`,
+                );
                 continue;
             }
 
