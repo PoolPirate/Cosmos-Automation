@@ -27,7 +27,9 @@ async function main() {
 
 async function runAssetShifting() {
     await runLevanaClaim(ChainName.Osmosis);
+    await runLevanaClaim(ChainName.Injective);
     await runAutoSwapAsync(ChainName.Osmosis);
+    await runAutoSwapAsync(ChainName.Injective);
     await runBuyGas();
     await runFlushAsync();
 }
