@@ -72,7 +72,7 @@ async function crankMarkets(
                     contractAddress: market.contract,
                     msg: {
                         crank: {
-                            execs: 10,
+                            execs: 5,
                         },
                     },
                 };
