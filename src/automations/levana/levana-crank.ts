@@ -97,7 +97,7 @@ async function crankMarkets(
         forceGasOverride = undefined;
     } catch (error) {
         if (String(error).includes('out of gas')) {
-            forceGasOverride = forceGasOverride ?? 1 + 1;
+            forceGasOverride = forceGasOverride ?? 1 + 0.4;
             console.log('Crank TX Failed: Out of Gas, Repeating');
             await crankMarkets(chain, markets, processingStartTimeMs)
                 .then(() => {
