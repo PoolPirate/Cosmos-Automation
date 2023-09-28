@@ -1,12 +1,7 @@
 import { ChainName } from '../../wallet/types';
 import Config from '../../../config.json';
-import {
-    executeMultiple,
-    getBalance,
-    transactMultiple,
-} from '../../wallet/wallet';
+import { getBalance, transactMultiple } from '../../wallet/wallet';
 import { getSwapMessage } from '../../skip-api/skip-api';
-import { ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
 import { SkipMessage } from '../../skip-api/types';
 import { toUtf8 } from '@cosmjs/encoding';
 import { prettifyDenom } from '../../main';
