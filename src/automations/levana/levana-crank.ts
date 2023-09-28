@@ -42,7 +42,9 @@ export async function runLevanaCrank(
 
                             return status.next_crank != null ? market : null;
                         } catch (error) {
-                            console.error(`Crank Check Failed: ${error}`);
+                            console.error(
+                                `Crank Check Failed (${chain}): ${error}`,
+                            );
                             return null;
                         }
                     }),
@@ -91,7 +93,7 @@ async function crankMarkets(
         );
 
         console.log(
-            `Crank TX Successful - Filter: ${
+            `Crank TX Successful (${chain}) - Filter: ${
                 new Date().getTime() - processingStartTimeMs
             }ms`,
         );
@@ -99,11 +101,11 @@ async function crankMarkets(
     } catch (error) {
         if (String(error).includes('out of gas')) {
             forceGasOverride = forceGasOverride ?? 1 + 0.2;
-            console.log('Crank TX Failed: Out of Gas, Repeating');
+            console.log(`Crank TX Failed (${chain}): Out of Gas, Repeating`);
             await crankMarkets(chain, markets, processingStartTimeMs)
                 .then(() => {
                     console.log(
-                        `Crank TX Successful - Filter: ${
+                        `Crank TX Successful (${chain}) - Filter: ${
                             new Date().getTime() - processingStartTimeMs
                         }ms`,
                     );
@@ -112,7 +114,7 @@ async function crankMarkets(
                 .catch(() => {});
         } else {
             forceGasOverride = undefined;
-            console.log(`Crank TX Failed: ${error}`);
+            console.log(`Crank TX Failed (${chain}): ${error}`);
         }
 
         previousCrankTasks.clear();
