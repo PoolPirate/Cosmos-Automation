@@ -30,9 +30,12 @@ async function runAssetShifting() {
     try {
         await runLevanaClaim(ChainName.Osmosis);
         await runLevanaClaim(ChainName.Injective);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         await runAutoSwapAsync(ChainName.Osmosis);
         await runAutoSwapAsync(ChainName.Injective);
+        await new Promise((resolve) => setTimeout(resolve, 30000));
         await runBuyGas();
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         await runFlushAsync();
     } catch (error) {
         console.log(`Asset shit failed: ${error}`);
@@ -57,9 +60,12 @@ export function prettifyCoin(denom: string, amount: number) {
         return `${amount} ${denom}`;
     }
 
-    return `${Math.round(
-        (1000 * amount) / Math.pow(10, tokenLabel.decimals) / 1000,
-    )} ${tokenLabel.symbol}`;
+    return `${
+        Math.round(
+            (Math.pow(10, tokenLabel.decimals / 4) * amount) /
+                Math.pow(10, tokenLabel.decimals),
+        ) / Math.pow(10, tokenLabel.decimals / 4)
+    } ${tokenLabel.symbol}`;
 }
 
 export function prettifyDenom(chain: ChainName, denom: string) {

@@ -37,10 +37,6 @@ export async function initializeWallet() {
         console.log(`${chain.prefix} - ${chainData.txAddress}`);
     }
 
-    const acc = await chains
-        .get(ChainName.Injective)
-        ?.txClient.getAccount(chains.get(ChainName.Injective)!.txAddress);
-
     console.log('Wallet setup complete');
 }
 
