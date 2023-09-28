@@ -14,11 +14,15 @@ import { toUtf8 } from '@cosmjs/encoding';
 import Semaphore from 'semaphore-promise';
 import { handleNewBlock } from '../main';
 import { ChainName, ChainData } from './types';
+import { StargateClient } from '@cosmjs/stargate';
+import { overrideAccountParser } from './utils/inj-account-parser';
 
 var chains: Map<ChainName, ChainData> = null!;
 
 export async function initializeWallet() {
     console.log('Initializing wallet');
+
+    overrideAccountParser();
     chains = new Map<ChainName, ChainData>();
 
     for (let i = 0; i < Config.chains.length; i++) {
@@ -32,6 +36,10 @@ export async function initializeWallet() {
         chains.set(chain.name as ChainName, chainData);
         console.log(`${chain.prefix} - ${chainData.txAddress}`);
     }
+
+    const acc = await chains
+        .get(ChainName.Injective)
+        ?.txClient.getAccount(chains.get(ChainName.Injective)!.txAddress);
 
     console.log('Wallet setup complete');
 }
