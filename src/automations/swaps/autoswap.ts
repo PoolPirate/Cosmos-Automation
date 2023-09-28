@@ -51,7 +51,6 @@ export async function runAutoSwapAsync(chain: ChainName) {
             }
 
             msgs.push(swapMessage);
-            break;
         }
 
         if (msgs.length == 0) {
