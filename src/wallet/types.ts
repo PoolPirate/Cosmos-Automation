@@ -15,5 +15,6 @@ export interface ChainData {
     queryClient: SigningCosmWasmClient;
     queryAddress: string;
     feeCurrency: string;
+    minimumGasPrice: number;
     peakHeight: number;
 }

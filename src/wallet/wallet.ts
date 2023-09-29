@@ -32,6 +32,7 @@ export async function initializeWallet() {
             chain.queryRpc,
             chain.txRpc,
             chain.feeCurrency,
+            chain.gasPrice,
         );
         chains.set(chain.name as ChainName, chainData);
         console.log(`${chain.prefix} - ${chainData.txAddress}`);
@@ -78,6 +79,7 @@ async function makeChainData(
     queryRpc: string,
     txRpc: string,
     feeCurrency: string,
+    minimumGasPrice: number,
 ) {
     const hdWallet = await DirectSecp256k1HdWallet.fromMnemonic(
         Config.mnemonics,
@@ -109,6 +111,7 @@ async function makeChainData(
         queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
         feeCurrency: feeCurrency,
         peakHeight: (await queryClient.getBlock()).header.height,
+        minimumGasPrice: minimumGasPrice,
     } satisfies ChainData;
 }
 
@@ -179,7 +182,8 @@ export async function send(
     denom: string,
     amount: number,
 ) {
-    const { txAddress, txClient } = chains.get(chain)!;
+    const { txAddress, txClient, minimumGasPrice, feeCurrency } =
+        chains.get(chain)!;
 
     await tx(
         chain,
@@ -190,7 +194,9 @@ export async function send(
                 [coin(amount, denom)],
                 {
                     gas: '90000',
-                    amount: [coin(Math.ceil(90000 * 0.0025), 'uosmo')],
+                    amount: [
+                        coin(Math.ceil(90000 * minimumGasPrice), feeCurrency),
+                    ],
                 },
             ),
     );
@@ -232,7 +238,8 @@ export async function executeMultiple(
         return;
     }
 
-    const { txClient, txAddress } = chains.get(ChainName.Osmosis)!;
+    const { txClient, txAddress, feeCurrency, minimumGasPrice } =
+        chains.get(chain)!;
 
     await tx(
         chain,
@@ -240,8 +247,8 @@ export async function executeMultiple(
             await txClient.executeMultiple(txAddress, instructions, {
                 amount: [
                     {
-                        denom: 'uosmo',
-                        amount: `${Math.ceil(0.0025 * bufferedGas)}`,
+                        denom: feeCurrency,
+                        amount: `${Math.ceil(minimumGasPrice * bufferedGas)}`,
                     },
                 ],
                 gas: `${bufferedGas}`,
@@ -269,7 +276,8 @@ export async function transactMultiple(
         return;
     }
 
-    const { txClient, txAddress } = chains.get(ChainName.Osmosis)!;
+    const { txClient, txAddress, feeCurrency, minimumGasPrice } =
+        chains.get(chain)!;
 
     await tx(
         chain,
@@ -277,8 +285,8 @@ export async function transactMultiple(
             await txClient.signAndBroadcast(txAddress, instructions, {
                 amount: [
                     {
-                        denom: 'uosmo',
-                        amount: `${Math.ceil(0.0025 * bufferedGas)}`,
+                        denom: feeCurrency,
+                        amount: `${Math.ceil(minimumGasPrice * bufferedGas)}`,
                     },
                 ],
                 gas: `${bufferedGas}`,
