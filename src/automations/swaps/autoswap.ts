@@ -5,6 +5,10 @@ import { getSwapMessage } from '../../skip-api/skip-api';
 import { SkipMessage } from '../../skip-api/types';
 import { toUtf8 } from '@cosmjs/encoding';
 import { prettifyDenom } from '../../main';
+import { EncodeObject } from '@cosmjs/proto-signing';
+import { MsgIBCSend } from '@injectivelabs/core-proto-ts/cjs/cosmwasm/wasm/v1/ibc';
+import { MsgExecuteContract } from '@injectivelabs/core-proto-ts/cjs/cosmwasm/wasm/v1/tx';
+import { MsgTransfer } from '@injectivelabs/core-proto-ts/cjs/ibc/applications/transfer/v1/tx';
 
 export async function runAutoSwapAsync(chain: ChainName) {
     console.log('Running AutoSwap');
@@ -51,27 +55,44 @@ export async function runAutoSwapAsync(chain: ChainName) {
             msgs.push(swapMessage);
         }
 
-        if (msgs.length == 0) {
-            return;
-        }
-
-        await transactMultiple(
-            chain,
-            msgs.map((msg) => {
-                return {
+        const txMsgs: EncodeObject[] = [];
+        msgs.forEach((msg) => {
+            if (msg.msg_type_url.includes('MsgExecuteContract')) {
+                txMsgs.push({
                     typeUrl: msg.msg_type_url,
-                    value: {
+                    value: MsgExecuteContract.fromPartial({
                         sender: msg.msg.sender,
                         contract: msg.msg.contract,
                         msg: toUtf8(JSON.stringify(msg.msg.msg)),
                         funds: msg.msg.funds,
-                    },
-                };
-            }),
-            {
-                simulateAsPrimary: true,
-            },
-        );
+                    }),
+                });
+            } else if (msg.msg_type_url.includes('MsgTransfer')) {
+                txMsgs.push({
+                    typeUrl: msg.msg_type_url,
+                    value: MsgTransfer.fromPartial({
+                        memo: msg.msg.memo,
+                        receiver: msg.msg.receiver,
+                        sender: msg.msg.sender,
+                        sourceChannel: msg.msg.source_channel,
+                        sourcePort: msg.msg.source_port,
+                        timeoutHeight: msg.msg.timeout_height,
+                        timeoutTimestamp: msg.msg.timeout_timestamp,
+                        token: msg.msg.token,
+                    }),
+                });
+            } else {
+                console.error(`Unmapped tx type: ${msg.msg_type_url}`);
+            }
+        });
+
+        if (txMsgs.length == 0) {
+            return;
+        }
+
+        await transactMultiple(chain, txMsgs, {
+            simulateAsPrimary: true,
+        });
     } catch (error) {
         console.error('Autoswap failed: ' + error);
     }

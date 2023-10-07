@@ -9,10 +9,5 @@ export interface SkipChainDefinition {
 
 export interface SkipMessage {
     msg_type_url: string;
-    msg: {
-        sender: string;
-        contract?: string;
-        msg: any;
-        funds: Coin[];
-    };
+    msg: any;
 }
