@@ -11,16 +11,19 @@ export async function runAutoSwapAsync(chain: ChainName) {
 
     try {
         const msgs: SkipMessage[] = [];
-
-        const denoms = Config.chains.find(
-            (x) => x.name == chain,
-        )!.autoswapDenoms;
+        const chainInfo = Config.chains.find((x) => x.name == chain)!;
+        const denoms = chainInfo.autoswapDenoms;
 
         for (let i = 0; i < denoms.length; i++) {
             const denom = denoms[i]!;
-            const balance = await getBalance(chain, denom);
 
-            if (balance == 0) {
+            const balance =
+                chainInfo.feeCurrency == denom
+                    ? (await getBalance(chain, denom)) -
+                      chainInfo.minBalance * 1.01
+                    : await getBalance(chain, denom);
+
+            if (balance <= 0) {
                 console.log(
                     `Skip swapping asset: ${prettifyDenom(
                         chain,
