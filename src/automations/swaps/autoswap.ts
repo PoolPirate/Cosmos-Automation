@@ -93,6 +93,7 @@ export async function runAutoSwapAsync(chain: ChainName) {
         await transactMultiple(chain, txMsgs, {
             simulateAsPrimary: true,
             gasBuffer: 40000,
+            gasMultiplicator: 1.15,
         });
     } catch (error) {
         console.error('Autoswap failed: ' + error);
