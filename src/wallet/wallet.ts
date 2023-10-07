@@ -270,7 +270,9 @@ export async function transactMultiple(
         options.simulateAsPrimary,
     );
 
-    const bufferedGas = Math.ceil(options.gasMultiplicator * gas);
+    const bufferedGas = Math.ceil(
+        options.gasMultiplicator * gas + (options.gasBuffer ?? 0),
+    );
 
     if (gas < options.minimumGas) {
         return;
