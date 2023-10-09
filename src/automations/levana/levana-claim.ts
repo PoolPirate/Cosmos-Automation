@@ -14,7 +14,7 @@ interface LevanaLPInfo {
 }
 
 export async function runLevanaClaim(chain: ChainName) {
-    console.log('Running Levana Claim');
+    console.log(`Running Levana Claim ${chain}`);
     const marketsToClaim = (
         await Promise.all(
             Config.chains
@@ -47,7 +47,9 @@ export async function runLevanaClaim(chain: ChainName) {
 
                         return null;
                     } catch (error) {
-                        console.error(`Claim Check Failed: ${error}`);
+                        console.error(
+                            `Claim Check (${chain}) Failed: ${error}`,
+                        );
                         return null;
                     }
                 }),
@@ -61,27 +63,38 @@ export async function runLevanaClaim(chain: ChainName) {
         return;
     }
 
-    await claimMarkets(chain, marketsToClaim);
+    await executeClaimMarkets(chain, marketsToClaim);
 }
 
-async function claimMarkets(chain: ChainName, markets: LevanaMarket[]) {
-    try {
-        await executeMultiple(
-            chain,
-            markets.map<ExecuteInstruction>((market) => {
-                return {
-                    contractAddress: market.contract,
-                    msg: {
-                        claim_yield: {},
-                    },
-                };
-            }),
-            {
-                simulateAsPrimary: true,
-                gasMultiplicator: 1.3,
-            },
-        );
-    } catch (error) {
-        console.error('Claiming failed!\n' + error);
+async function executeClaimMarkets(chain: ChainName, markets: LevanaMarket[]) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            await executeClaimMarketsAttempt(chain, markets);
+            console.log(`Claiming success (${chain})`);
+            break;
+        } catch (error) {
+            console.error(`Claiming tx failed (${chain})! + ${error}`);
+        }
     }
+}
+
+async function executeClaimMarketsAttempt(
+    chain: ChainName,
+    markets: LevanaMarket[],
+) {
+    await executeMultiple(
+        chain,
+        markets.map<ExecuteInstruction>((market) => {
+            return {
+                contractAddress: market.contract,
+                msg: {
+                    claim_yield: {},
+                },
+            };
+        }),
+        {
+            simulateAsPrimary: true,
+            gasMultiplicator: 1.3,
+        },
+    );
 }

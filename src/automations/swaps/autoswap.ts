@@ -98,3 +98,25 @@ export async function runAutoSwapAsync(chain: ChainName) {
         console.error('Autoswap failed: ' + error);
     }
 }
+
+async function executeAutoswap(chain: ChainName, txMsgs: EncodeObject[]) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            await executeAutoswapAttempt(chain, txMsgs);
+            console.log(`Autoswap success (${chain})`);
+            break;
+        } catch (error) {
+            console.error(`Autoswap tx failed (${chain}): ${error}`);
+        }
+    }
+}
+
+async function executeAutoswapAttempt(
+    chain: ChainName,
+    txMsgs: EncodeObject[],
+) {
+    await transactMultiple(chain, txMsgs, {
+        simulateAsPrimary: true,
+        gasBuffer: 40000,
+    });
+}

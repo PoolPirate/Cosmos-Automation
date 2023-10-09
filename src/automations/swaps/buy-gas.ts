@@ -6,6 +6,7 @@ import { ChainName } from '../../wallet/types';
 import { getConversionRate, getSwapMessage } from '../../skip-api/skip-api';
 import { toUtf8 } from '@cosmjs/encoding';
 import { prettifyCoin, prettifyDenom } from '../../main';
+import { EncodeObject } from '@cosmjs/proto-signing';
 
 export async function runBuyGas() {
     console.log('Running Buy Gas');
@@ -96,24 +97,39 @@ export async function runBuyGas() {
             return;
         }
 
-        await transactMultiple(
-            Config.autoswap.targetChainName as ChainName,
-            msgs.map((msg) => {
-                return {
-                    typeUrl: msg.msg_type_url,
-                    value: {
-                        sender: msg.msg.sender,
-                        contract: msg.msg.contract,
-                        msg: toUtf8(JSON.stringify(msg.msg.msg)),
-                        funds: msg.msg.funds,
-                    },
-                };
-            }),
-            {
-                simulateAsPrimary: true,
-            },
-        );
+        executeBuyGas(Config.autoswap.targetChainName as ChainName, msgs);
     } catch (error) {
         console.error(`Buying gas failed: ${error}`);
     }
+}
+
+async function executeBuyGas(chain: ChainName, msgs: SkipMessage[]) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            await executeBuyGasAttempt(
+                chain,
+                msgs.map((msg) => {
+                    return {
+                        typeUrl: msg.msg_type_url,
+                        value: {
+                            sender: msg.msg.sender,
+                            contract: msg.msg.contract,
+                            msg: toUtf8(JSON.stringify(msg.msg.msg)),
+                            funds: msg.msg.funds,
+                        },
+                    };
+                }),
+            );
+            console.log(`Buy gas success (${chain})`);
+            break;
+        } catch (error) {
+            console.log(`Buy gas failed (${chain}): ${error}`);
+        }
+    }
+}
+
+async function executeBuyGasAttempt(chain: ChainName, msgs: EncodeObject[]) {
+    await transactMultiple(chain, msgs, {
+        simulateAsPrimary: true,
+    });
 }
