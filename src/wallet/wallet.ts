@@ -129,8 +129,8 @@ async function tx<T>(
     try {
         if (
             (options?.maxAttempts != undefined &&
-                attempt <= options.maxAttempts) ||
-            attempt <= 3
+                attempt > options.maxAttempts) ||
+            attempt > 3
         ) {
             throw Error(`Aborted: Maximum attempts reached (${attempt})`);
         }
