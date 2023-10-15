@@ -157,13 +157,18 @@ async function tx<T>(
         }
     }
 
+    let result: T = undefined!;
+
     try {
-        const result = await func();
+        result = await func();
         release();
         return result;
     } catch (e) {
         release();
 
+        if (String(e).includes('Length must be a multiple of 4')) {
+            return result;
+        }
         if (String(e).includes('out of gas')) {
             throw e;
         }
