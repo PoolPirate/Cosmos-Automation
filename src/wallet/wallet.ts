@@ -123,40 +123,41 @@ async function tx<T>(
 ): Promise<T> {
     attempt ??= 1;
     const semaphore = chains.get(chain)!.txSemaphore;
-
     const release = await semaphore.acquire();
 
-    try {
+    if (
+        (options?.maxAttempts != undefined && attempt > options.maxAttempts) ||
+        attempt > 3
+    ) {
+        release();
+        throw Error(`Aborted: Maximum attempts reached (${attempt})`);
+    }
+    if (
+        options?.maxTotalDelayMs != undefined &&
+        options?.blockTimeMs != undefined
+    ) {
         if (
-            (options?.maxAttempts != undefined &&
-                attempt > options.maxAttempts) ||
-            attempt > 3
+            options.blockTimeMs + options.maxTotalDelayMs <
+            new Date().getTime()
         ) {
-            throw Error(`Aborted: Maximum attempts reached (${attempt})`);
+            release();
+            throw Error('Aborted: Total Delay too high');
         }
+    }
+    if (
+        options?.maxProcessingDelayMs != undefined &&
+        options?.processingStartTimeMs != undefined
+    ) {
         if (
-            options?.maxTotalDelayMs != undefined &&
-            options?.blockTimeMs != undefined
+            options.processingStartTimeMs + options.maxProcessingDelayMs <
+            new Date().getTime()
         ) {
-            if (
-                options.blockTimeMs + options.maxTotalDelayMs <
-                new Date().getTime()
-            ) {
-                throw Error('Aborted: Total Delay too high');
-            }
+            release();
+            throw Error('Aborted: Processing Delay too high');
         }
-        if (
-            options?.maxProcessingDelayMs != undefined &&
-            options?.processingStartTimeMs != undefined
-        ) {
-            if (
-                options.processingStartTimeMs + options.maxProcessingDelayMs <
-                new Date().getTime()
-            ) {
-                throw Error('Aborted: Processing Delay too high');
-            }
-        }
+    }
 
+    try {
         const result = await func();
         release();
         return result;
