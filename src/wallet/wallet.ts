@@ -119,12 +119,21 @@ async function tx<T>(
     chain: ChainName,
     func: () => Promise<T>,
     options?: ExecutionOptions,
-) {
+    attempt?: number,
+): Promise<T> {
+    attempt ??= 1;
     const semaphore = chains.get(chain)!.txSemaphore;
 
     const release = await semaphore.acquire();
 
     try {
+        if (
+            (options?.maxAttempts != undefined &&
+                attempt <= options.maxAttempts) ||
+            attempt <= 3
+        ) {
+            throw Error(`Aborted: Maximum attempts reached (${attempt})`);
+        }
         if (
             options?.maxTotalDelayMs != undefined &&
             options?.blockTimeMs != undefined
@@ -148,9 +157,14 @@ async function tx<T>(
             }
         }
 
-        return await func();
-    } finally {
+        const result = await func();
         release();
+        return result;
+    } catch (e) {
+        release();
+        console.warn(`${chain} Tx Failed: ${e}. Retrying...`);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return await tx(chain, func, options, attempt + 1);
     }
 }
 
@@ -209,6 +223,7 @@ export interface ExecutionOptions {
     gasBuffer?: number;
     blockTimeMs?: number;
     maxTotalDelayMs?: number;
+    maxAttempts?: number;
     processingStartTimeMs?: number;
     maxProcessingDelayMs?: number;
 }
