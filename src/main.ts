@@ -30,12 +30,12 @@ async function runAssetShifting() {
     try {
         await runLevanaClaim(ChainName.Osmosis);
         await runLevanaClaim(ChainName.Injective);
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 20000));
         await runAutoSwapAsync(ChainName.Osmosis);
         await runAutoSwapAsync(ChainName.Injective);
-        await new Promise((resolve) => setTimeout(resolve, 30000));
+        await new Promise((resolve) => setTimeout(resolve, 50000));
         await runBuyGas();
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 20000));
         await runFlushAsync();
     } catch (error) {
         console.log(`Asset shit failed: ${error}`);
