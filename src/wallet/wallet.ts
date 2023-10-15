@@ -164,7 +164,7 @@ async function tx<T>(
     } catch (e) {
         release();
 
-        if (e instanceof Error && e.message.includes('out of gas')) {
+        if (String(e).includes('out of gas')) {
             throw e;
         }
 
