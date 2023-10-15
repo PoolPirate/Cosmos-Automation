@@ -38,7 +38,8 @@ async function runAssetShifting() {
         await new Promise((resolve) => setTimeout(resolve, 20000));
         await runFlushAsync();
     } catch (error) {
-        console.log(`Asset shit failed: ${error}`);
+        console.log(`Asset shit failed: ${error}. Rescheduling in 5 minutes`);
+        setTimeout(runAssetShifting, 5 * 60 * 1000);
     }
 }
 
