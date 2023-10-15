@@ -163,6 +163,11 @@ async function tx<T>(
         return result;
     } catch (e) {
         release();
+
+        if (e instanceof Error && e.message.includes('out of gas')) {
+            throw e;
+        }
+
         console.warn(`${chain} Tx Failed: ${e}. Retrying...`);
         await new Promise((resolve) => setTimeout(resolve, 100));
         return await tx(chain, func, options, attempt + 1);
