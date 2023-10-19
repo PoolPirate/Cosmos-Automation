@@ -204,6 +204,7 @@ async function tx<T>(
             const parts = String(e).split(' ');
             const i = parts.findLastIndex((x) => x == 'expected');
             setSequence(chain, parseInt(parts[i - 1]!));
+            return await tx(chain, func, options, attempt + 1);
         }
         if (String(e).includes('out of gas')) {
             throw e;
