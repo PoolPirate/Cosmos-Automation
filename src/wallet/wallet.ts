@@ -14,7 +14,7 @@ import { toUtf8 } from '@cosmjs/encoding';
 import Semaphore from 'semaphore-promise';
 import { handleNewBlock } from '../main';
 import { ChainName, ChainData } from './types';
-import { StargateClient } from '@cosmjs/stargate';
+import { SequenceResponse, StargateClient } from '@cosmjs/stargate';
 import { overrideAccountParser } from './utils/inj-account-parser';
 
 var chains: Map<ChainName, ChainData> = null!;
@@ -28,6 +28,7 @@ export async function initializeWallet() {
     for (let i = 0; i < Config.chains.length; i++) {
         const chain = Config.chains[i]!;
         const chainData = await makeChainData(
+            chain.name as ChainName,
             chain.prefix,
             chain.queryRpc,
             chain.txRpc,
@@ -74,7 +75,12 @@ async function refreshPeakHeight(chain: ChainName, callsSinceUpdate: number) {
     }
 }
 
+function incrementSequence(chain: ChainName) {
+    chains.get(chain)!.currentTxSequence += 1;
+}
+
 async function makeChainData(
+    name: ChainName,
     prefix: string,
     queryRpc: string,
     txRpc: string,
@@ -99,13 +105,33 @@ async function makeChainData(
         queryHdWallet,
     );
 
+    const txClient = await SigningCosmWasmClient.connectWithSigner(
+        txRpc,
+        hdWallet,
+    );
+
+    const txAddress = (await hdWallet.getAccounts())[0]!.address;
+
+    const sequence = await txClient.getSequence(txAddress);
+
+    const previousGetSequence = txClient.getSequence;
+    txClient.getSequence = async (address) => {
+        if (address != txAddress) {
+            return await previousGetSequence(address);
+        }
+
+        var seq = {
+            accountNumber: sequence.accountNumber,
+            sequence: chains.get(name)!.currentTxSequence,
+        } satisfies SequenceResponse;
+        return seq;
+    };
+
     return {
         wallet: hdWallet,
-        txClient: await SigningCosmWasmClient.connectWithSigner(
-            txRpc,
-            hdWallet,
-        ),
-        txAddress: (await hdWallet.getAccounts())[0]!.address,
+        txClient: txClient,
+        txAddress: txAddress,
+        currentTxSequence: sequence.sequence,
         txSemaphore: new Semaphore(1),
         queryClient: queryClient,
         queryAddress: (await queryHdWallet.getAccounts())[0]!.address,
@@ -162,6 +188,7 @@ async function tx<T>(
     try {
         result = await func();
         release();
+        incrementSequence(chain);
         return result;
     } catch (e) {
         release();
@@ -363,8 +390,7 @@ async function estimateExecuteGas(
             }),
         );
 
-        return await tx(
-            chain,
+        return await query(
             async () => await txClient.simulate(txAddress, msgs, undefined),
         );
     }
@@ -389,8 +415,7 @@ async function estimateTransactGas(
     } else {
         const { txClient, txAddress } = chains.get(chain)!;
 
-        return await tx(
-            chain,
+        return await query(
             async () =>
                 await txClient.simulate(txAddress, instructions, undefined),
         );
