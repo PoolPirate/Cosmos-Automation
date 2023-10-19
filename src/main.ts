@@ -23,7 +23,7 @@ async function main() {
     await initializeWallet();
     await initializeSkip();
 
-    await runAssetShifting();
+    //await runAssetShifting();
 
     setInterval(reportExecutionDurations, 300000);
 
