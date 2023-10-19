@@ -12,12 +12,10 @@ main()
     .then(() => {})
     .catch((e) => console.error('APP CRASH! ' + e));
 
-const executionDurations: Map<ChainName, number[]> = new Map<
-    ChainName,
-    number[]
->();
+var executionDurations: Map<ChainName, number[]>;
 
 async function main() {
+    executionDurations = new Map<ChainName, number[]>();
     Config.chains.forEach((chain) => {
         executionDurations.set(chain.name as ChainName, []);
     });
