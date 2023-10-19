@@ -12,13 +12,22 @@ main()
     .then(() => {})
     .catch((e) => console.error('APP CRASH! ' + e));
 
-var lastCrankRun: Date;
+const executionDurations: Map<ChainName, number[]> = new Map<
+    ChainName,
+    number[]
+>();
 
 async function main() {
+    Config.chains.forEach((chain) => {
+        executionDurations.set(chain.name as ChainName, []);
+    });
+
     await initializeWallet();
     await initializeSkip();
 
     await runAssetShifting();
+
+    setInterval(reportExecutionDurations, 300000);
 
     setTimeout(refreshPeakHeights, 1000); //Self refreshing
     setInterval(runAssetShifting, 1000 * 60 * 60 * 12);
@@ -47,7 +56,24 @@ export async function handleNewBlock(chain: ChainName) {
     const processingStartTimeMs = new Date().getTime();
 
     await runLevanaCrank(chain, processingStartTimeMs);
-    lastCrankRun = new Date();
+    executionDurations
+        .get(chain)!
+        .push(new Date().getTime() - processingStartTimeMs);
+}
+
+function reportExecutionDurations() {
+    let s = '';
+
+    Config.chains.forEach((chain) => {
+        s += `\n${chain.name} - avg ${Math.round(
+            executionDurations
+                .get(chain.name as ChainName)!
+                .reduce((prev, curr, _, arr) => prev + curr / arr.length, 0),
+        )} ms`;
+        executionDurations.set(chain.name as ChainName, []);
+    });
+
+    console.log('Average Block Handler Execution Times:' + s);
 }
 
 async function sleepInfinite() {
