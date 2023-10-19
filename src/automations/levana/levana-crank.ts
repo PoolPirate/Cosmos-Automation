@@ -29,18 +29,30 @@ export async function runLevanaCrank(
                                 },
                             )) as LevanaStatus;
 
+                            if (status.next_crank == null) {
+                                return null;
+                            }
+
                             if (
                                 previousCrankTasks.get(market.contract) ==
                                 JSON.stringify(status.next_crank)
                             ) {
+                                console.log(`${market.contract} UNCHANGED`);
                                 return null;
                             }
+
                             previousCrankTasks.set(
                                 market.contract,
                                 JSON.stringify(status.next_crank),
                             );
 
-                            return status.next_crank != null ? market : null;
+                            console.log(
+                                `${market.contract} FOUND: ${JSON.stringify(
+                                    status.next_crank,
+                                )}`,
+                            );
+
+                            return market;
                         } catch (error) {
                             console.error(
                                 `Crank Check Failed (${chain}): ${error}`,

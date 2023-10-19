@@ -79,6 +79,10 @@ function incrementSequence(chain: ChainName) {
     chains.get(chain)!.currentTxSequence += 1;
 }
 
+function setSequence(chain: ChainName, sequence: number) {
+    chains.get(chain)!.currentTxSequence = sequence;
+}
+
 async function makeChainData(
     name: ChainName,
     prefix: string,
@@ -195,6 +199,11 @@ async function tx<T>(
 
         if (String(e).includes('Length must be a multiple of 4')) {
             return result;
+        }
+        if (String(e).includes('incorrect account sequence')) {
+            const parts = String(e).split(' ');
+            const i = parts.findLastIndex((x) => x == 'expected');
+            setSequence(chain, parseInt(parts[i - 1]!));
         }
         if (String(e).includes('out of gas')) {
             throw e;
