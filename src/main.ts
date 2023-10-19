@@ -67,6 +67,10 @@ function reportExecutionDurations() {
             executionDurations
                 .get(chain.name as ChainName)!
                 .reduce((prev, curr, _, arr) => prev + curr / arr.length, 0),
+        )} ms; max ${Math.round(
+            executionDurations
+                .get(chain.name as ChainName)!
+                .reduce((prev, curr) => (prev > curr ? prev : curr), 0),
         )} ms`;
         executionDurations.set(chain.name as ChainName, []);
     });
