@@ -201,6 +201,7 @@ async function tx<T>(
             return result;
         }
         if (String(e).includes('incorrect account sequence')) {
+            console.warn(e);
             const parts = String(e).split(' ');
             const i = parts.findLastIndex((x) => x == 'expected');
             setSequence(chain, parseInt(parts[i - 1]!));
@@ -211,7 +212,7 @@ async function tx<T>(
         }
 
         console.warn(`${chain} Tx Failed: ${e}. Retrying...`);
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 250));
         return await tx(chain, func, options, attempt + 1);
     }
 }
