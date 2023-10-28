@@ -96,7 +96,8 @@ async function crankMarkets(
                 };
             }),
             {
-                minimumGas: 210000 * markets.length,
+                minimumGas:
+                    chain == ChainName.Osmosis ? 210000 * markets.length : 0,
                 gasMultiplicator: forceGasOverride ?? 1.06,
                 gasBuffer: 75000,
                 processingStartTimeMs: processingStartTimeMs,

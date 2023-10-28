@@ -50,7 +50,7 @@ async function runAssetShifting() {
     }
 }
 
-export async function handleNewBlock(chain: ChainName) {
+export async function handleNewBlock(chain: ChainName, blockHeight: number) {
     const processingStartTimeMs = new Date().getTime();
 
     await runLevanaCrank(chain, processingStartTimeMs);

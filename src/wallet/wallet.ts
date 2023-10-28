@@ -62,7 +62,7 @@ async function refreshPeakHeight(chain: ChainName, callsSinceUpdate: number) {
         if (height > peakHeight) {
             chainData.peakHeight = height;
             setTimeout(() => refreshPeakHeight(chain, 1), 4400);
-            handleNewBlock(chain);
+            handleNewBlock(chain, height);
             return;
         }
 
