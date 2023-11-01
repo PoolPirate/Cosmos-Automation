@@ -115,16 +115,20 @@ async function crankMarkets(
         if (String(error).includes('out of gas')) {
             forceGasOverride = forceGasOverride ?? 1 + 0.2;
             console.log(`Crank TX Failed (${chain}): Out of Gas, Repeating`);
-            await crankMarkets(chain, markets, processingStartTimeMs)
-                .then(() => {
-                    console.log(
-                        `Crank TX Successful (${chain}) - Filter: ${
-                            new Date().getTime() - processingStartTimeMs
-                        }ms`,
-                    );
-                    forceGasOverride = undefined;
-                })
-                .catch(() => {});
+            await crankMarkets(chain, markets, processingStartTimeMs);
+        } else if (String(error).includes('price_too_old')) {
+            const msg_index = parseInt(
+                String(error).split('message index: 0')[0]?.split(':')[0]!,
+            );
+            const market = markets[msg_index];
+            console.log(
+                `Crank TX Failed (${chain}): Price outdated (${market?.contract})`,
+            );
+            await crankMarkets(
+                chain,
+                markets.filter((x) => x.contract != market?.contract),
+                processingStartTimeMs,
+            );
         } else {
             forceGasOverride = undefined;
             console.log(`Crank TX Failed (${chain}): ${error}`);
