@@ -118,9 +118,17 @@ async function crankMarkets(
             await crankMarkets(chain, markets, processingStartTimeMs);
         } else if (String(error).includes('price_too_old')) {
             const msg_index = parseInt(
-                String(error).split('message index: 0')[0]?.split(':')[0]!,
+                String(error).split('message index: ')[1]?.split(':')[0]!,
             );
             const market = markets[msg_index];
+
+            if (markets.length == 1) {
+                console.log(
+                    `Crank cancelled, price outdated (${market?.contract})`,
+                );
+                return;
+            }
+
             console.log(
                 `Crank TX Failed (${chain}): Price outdated (${market?.contract})`,
             );
